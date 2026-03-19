@@ -17,6 +17,8 @@ interface EnhancedLedgerEntry {
   pattern: string;
   action: string;
   client?: { name: string; slug: string };
+  clientId?: string;
+  clientEmail?: string;
   engagement: { viewCount: number; lastViewedAt?: string } | null;
 }
 
@@ -36,16 +38,33 @@ export const useDashboard = () => {
   const [entries, setEntries] = useState<EnhancedLedgerEntry[]>([]);
   const [alerts, setAlerts] = useState<IntelligenceAlert[]>([]);
   const [activities, setActivities] = useState<RecentActivity[]>([]);
+  const [sendTime, setSendTime] = useState('09:00');
+  const [commLogs, setCommLogs] = useState<any[]>([]);
 
   const load = async () => {
     try {
       setLoading(true);
-      const [clients, invoices, commLogs, commitments] = await Promise.all([
+      const [clients, invoices, commLogsData, commitments] = await Promise.all([
         clientService.getAll(),
         invoiceService.getAll(),
         communicationService.getAll(),
         commitmentServiceApi.getAll(),
       ]);
+      const commLogs = commLogsData;
+      setCommLogs(commLogsData);
+
+      // Fetch reminder settings for sendTime
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: rs } = await supabase
+            .from('reminder_settings')
+            .select('send_time')
+            .eq('user_id', user.id)
+            .maybeSingle();
+          if (rs?.send_time) setSendTime(rs.send_time);
+        }
+      } catch {}
 
       const clientMap = new Map(clients.map(c => [c.id, c]));
       const now = new Date();
@@ -92,6 +111,8 @@ export const useDashboard = () => {
             pattern: client ? `${client.level} client` : 'Unknown',
             action: effectiveStatus === 'overdue' ? 'Follow Up' : 'View',
             client: client ? { name: client.name, slug: client.slug } : { name: 'Unknown', slug: '' },
+            clientId: invoice.clientId,
+            clientEmail: client?.email || '',
             engagement: { viewCount: invoice.viewCount || 0, lastViewedAt: invoice.lastViewedAt },
           };
         });
@@ -184,5 +205,5 @@ export const useDashboard = () => {
     return () => { cleanup?.(); };
   }, []);
 
-  return { stats, entries, alerts, activities, loading, error, refetch: load };
+  return { stats, entries, alerts, activities, loading, error, refetch: load, sendTime, commLogs };
 };

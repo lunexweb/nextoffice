@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Users, 
@@ -12,6 +12,8 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { useDashboard, useCommunications, useBusinessProfile } from '@/hooks';
+import { emailService } from '@/services/emailService';
+import { communicationService } from '@/services/api/communicationService';
 import { 
   NOCard, 
   ScoreBar, 
@@ -77,7 +79,7 @@ const formatRelativeTime = (timestamp: Date) => {
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const { stats, entries, alerts, activities, loading, error } = useDashboard();
+  const { stats, entries, alerts, activities, loading, error, sendTime, commLogs } = useDashboard();
   const { analytics } = useCommunications();
   const { businessProfile } = useBusinessProfile();
 
@@ -90,29 +92,62 @@ const DashboardPage: React.FC = () => {
   const totalDueSoon = dueSoonInvoices.reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0);
   const totalUpcoming = upcomingInvoices.reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0);
 
+  // Format sendTime ("09:00") to 12h display
+  const formatTime12h = (time24: string) => {
+    const [h, m] = time24.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+  };
+  const sendTimeDisplay = formatTime12h(sendTime);
+
+  // Check if a follow-up/reminder was already sent today for a given invoice
+  const getLastFollowUpForInvoice = (invoiceId: string) => {
+    const logs = commLogs
+      .filter((l: any) => l.invoiceId === invoiceId && (l.type === 'followup' || l.type === 'reminder'))
+      .sort((a: any, b: any) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
+    return logs[0] || null;
+  };
+
+  const wasSentToday = (invoiceId: string) => {
+    const last = getLastFollowUpForInvoice(invoiceId);
+    if (!last) return false;
+    const sentDate = new Date(last.sentAt);
+    const today = new Date();
+    return sentDate.toDateString() === today.toDateString();
+  };
+
   // Compute next follow-up for overdue invoices: next day after overdue, then every 2 days
-  const getNextFollowUp = (dueDate: string) => {
+  const getNextFollowUp = (dueDate: string, invoiceId: string) => {
     const due = new Date(dueDate);
     due.setHours(0, 0, 0, 0);
     const now = new Date();
     now.setHours(0, 0, 0, 0);
+    const sentToday = wasSentToday(invoiceId);
+    const lastLog = getLastFollowUpForInvoice(invoiceId);
+
     // Schedule: day 1 after due, then every 2 days (1, 3, 5, 7, 9, ...)
     const daysOverdue = Math.floor((now.getTime() - due.getTime()) / 86400000);
     if (daysOverdue < 1) {
-      // Not overdue yet
       const followUpDate = new Date(due);
       followUpDate.setDate(followUpDate.getDate() + 1);
       const daysUntil = Math.floor((followUpDate.getTime() - now.getTime()) / 86400000);
       return {
         date: followUpDate.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }),
+        time: sendTimeDisplay,
         daysUntil,
         label: 'First follow-up',
-        isPast: false,
+        sentToday,
+        lastSentAt: lastLog?.sentAt || null,
       };
     }
     // Find the next follow-up day: 1, 3, 5, 7, 9, ...
     let nextStep = 1;
     while (nextStep < daysOverdue) {
+      nextStep += 2;
+    }
+    // If today is a follow-up day and it was already sent, advance to next
+    if (nextStep === daysOverdue && sentToday) {
       nextStep += 2;
     }
     const followUpDate = new Date(due);
@@ -122,11 +157,88 @@ const DashboardPage: React.FC = () => {
     const label = followUpNumber === 1 ? 'First follow-up' : `Follow-up #${followUpNumber}`;
     return {
       date: followUpDate.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }),
+      time: sendTimeDisplay,
       daysUntil,
       label,
-      isPast: false,
+      sentToday,
+      lastSentAt: lastLog?.sentAt || null,
     };
   };
+
+  // Auto-trigger follow-up emails for overdue invoices when due
+  const autoFollowUpRan = useRef(false);
+  const processAutoFollowUps = useCallback(async () => {
+    if (!businessProfile?.businessName || !businessProfile?.email) return;
+    const now = new Date();
+    const [sendH, sendM] = sendTime.split(':').map(Number);
+    // Only trigger if current time >= sendTime
+    if (now.getHours() < sendH || (now.getHours() === sendH && now.getMinutes() < sendM)) return;
+
+    for (const invoice of overdueInvoices) {
+      if (wasSentToday(invoice.id)) continue;
+      if (!invoice.clientEmail) continue;
+
+      const daysOverdue = Math.max(0, Math.floor((Date.now() - new Date(invoice.dueDate).getTime()) / 86400000));
+      // Check if today is a follow-up day (1, 3, 5, 7, ...)
+      const due = new Date(invoice.dueDate);
+      due.setHours(0, 0, 0, 0);
+      const todayMidnight = new Date();
+      todayMidnight.setHours(0, 0, 0, 0);
+      const daysSinceDue = Math.floor((todayMidnight.getTime() - due.getTime()) / 86400000);
+      // Follow-up days: 1, 3, 5, 7, 9, ... i.e. odd numbers starting from 1
+      if (daysSinceDue < 1) continue;
+      if (daysSinceDue % 2 === 0) continue; // even days are not follow-up days
+
+      try {
+        // Send follow-up to client
+        await emailService.sendFollowUp({
+          to: invoice.clientEmail,
+          invoiceId: invoice.id,
+          clientName: invoice.client?.name || 'Client',
+          invoiceNumber: invoice.documentNumber,
+          amount: invoice.amount,
+          dueDate: invoice.dueDate,
+          daysOverdue,
+          businessName: businessProfile.businessName,
+          businessEmail: businessProfile.email,
+          businessPhone: businessProfile.phone || '',
+        });
+
+        // Log to communication_logs
+        await communicationService.create({
+          invoice_id: invoice.id,
+          client_id: invoice.clientId,
+          type: 'followup',
+          status: 'sent',
+          subject: `Follow-up: Invoice ${invoice.documentNumber} (${daysOverdue}d overdue)`,
+          body: `Auto follow-up sent to ${invoice.clientEmail}`,
+        });
+
+        // Send owner notification
+        await emailService.sendFollowUp({
+          to: businessProfile.email,
+          invoiceId: invoice.id,
+          clientName: invoice.client?.name || 'Client',
+          invoiceNumber: invoice.documentNumber,
+          amount: invoice.amount,
+          dueDate: invoice.dueDate,
+          daysOverdue,
+          businessName: businessProfile.businessName,
+          businessEmail: businessProfile.email,
+          businessPhone: businessProfile.phone || '',
+        });
+      } catch {
+        // Silently fail — don't block dashboard
+      }
+    }
+  }, [overdueInvoices, sendTime, businessProfile, commLogs]);
+
+  useEffect(() => {
+    if (!loading && !autoFollowUpRan.current && overdueInvoices.length > 0) {
+      autoFollowUpRan.current = true;
+      processAutoFollowUps();
+    }
+  }, [loading, overdueInvoices, processAutoFollowUps]);
 
   if (loading) {
     return (
@@ -223,7 +335,8 @@ const DashboardPage: React.FC = () => {
         ) : (
           <div className="space-y-2">
             {overdueInvoices.slice(0, 5).map((invoice: any, index: number) => {
-              const followUp = getNextFollowUp(invoice.dueDate);
+              const followUp = getNextFollowUp(invoice.dueDate, invoice.id);
+              const daysOverdue = Math.max(0, Math.floor((Date.now() - new Date(invoice.dueDate).getTime()) / 86400000));
               return (
                 <div key={invoice.id || index} className="rounded-lg bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 overflow-hidden">
                   {/* Main row — tap to go to client */}
@@ -235,6 +348,7 @@ const DashboardPage: React.FC = () => {
                       <p className="font-semibold text-[13px] sm:text-sm truncate leading-tight">{invoice.client?.name || 'Unknown Client'}</p>
                       <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
                         {invoice.documentNumber} · Due {invoice.dueDate}
+                        {daysOverdue > 0 && <span className="text-red-500 font-medium"> · {daysOverdue}d overdue</span>}
                       </p>
                     </div>
                     <div className="text-right flex-shrink-0">
@@ -244,7 +358,36 @@ const DashboardPage: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                  {/* Follow-up bar */}
+
+                  {/* Sent-today status bar */}
+                  {followUp.sentToday && (
+                    <div className="px-2.5 py-1 sm:px-3 bg-green-50 dark:bg-green-900/15 border-t border-green-100 dark:border-green-900/20 flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-[10px] sm:text-xs">
+                        <CheckCircle size={10} className="text-green-600 flex-shrink-0" />
+                        <span className="font-medium text-green-700 dark:text-green-400">Followed up today</span>
+                      </div>
+                      <span className="text-[10px] text-green-600 dark:text-green-400">
+                        {followUp.lastSentAt ? new Date(followUp.lastSentAt).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' }) : ''}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Link opened indicator */}
+                  {invoice.engagement?.viewCount > 0 && (
+                    <div className="px-2.5 py-1 sm:px-3 bg-blue-50 dark:bg-blue-900/15 border-t border-blue-100 dark:border-blue-900/20 flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-[10px] sm:text-xs">
+                        <Eye size={10} className="text-blue-600 flex-shrink-0" />
+                        <span className="font-medium text-blue-700 dark:text-blue-400">Invoice link opened</span>
+                      </div>
+                      <span className="text-[10px] text-blue-600 dark:text-blue-400">
+                        {invoice.engagement.viewCount}× {invoice.engagement.lastViewedAt
+                          ? `· last ${new Date(invoice.engagement.lastViewedAt).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })} ${new Date(invoice.engagement.lastViewedAt).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}`
+                          : ''}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Next follow-up bar */}
                   <div className="px-2.5 py-1.5 sm:px-3 sm:py-2 bg-red-100/50 dark:bg-red-900/15 border-t border-red-100 dark:border-red-900/20 flex items-center justify-between">
                     <div className="flex items-center gap-1.5 text-[10px] sm:text-xs">
                       <Send size={10} className="text-amber-600 flex-shrink-0" />
@@ -252,14 +395,16 @@ const DashboardPage: React.FC = () => {
                       <span className="text-muted-foreground hidden sm:inline">· {followUp.label}</span>
                     </div>
                     {followUp.daysUntil === 0 ? (
-                      <span className="text-[10px] font-bold text-red-600 bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded-full animate-pulse">Today!</span>
+                      <span className="text-[10px] font-bold text-red-600 bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded-full animate-pulse">
+                        Today at {followUp.time}
+                      </span>
                     ) : followUp.daysUntil === 1 ? (
                       <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full">
-                        {followUp.date} (tomorrow)
+                        {followUp.date} at {followUp.time} (tomorrow)
                       </span>
                     ) : (
                       <span className="text-[10px] font-medium text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full">
-                        {followUp.date} (in {followUp.daysUntil} days)
+                        {followUp.date} at {followUp.time} (in {followUp.daysUntil} days)
                       </span>
                     )}
                   </div>

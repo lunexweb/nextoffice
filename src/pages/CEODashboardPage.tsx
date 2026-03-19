@@ -356,7 +356,8 @@ export default function CEODashboardPage() {
 
   const handleUpdateLead = async (id: string, field: string, value: string | boolean) => {
     try {
-      const { error } = await supabase.from('leads').update({ [field]: value || null }).eq('id', id);
+      const dbValue = typeof value === 'boolean' ? value : (value || null);
+      const { error } = await supabase.from('leads').update({ [field]: dbValue }).eq('id', id);
       if (error) throw error;
       setLeads(prev => prev.map(l => l.id === id ? { ...l, [field]: value || null } : l));
     } catch (err: any) {

@@ -88,6 +88,7 @@ export const mockInvoices: Invoice[] = [
     vatEnabled: false,
     vatPercentage: 0,
     vatAmount: 0,
+    amountPaid: 0,
   },
   {
     id: '2',
@@ -113,6 +114,7 @@ export const mockInvoices: Invoice[] = [
     vatEnabled: false,
     vatPercentage: 0,
     vatAmount: 0,
+    amountPaid: 0,
   },
   {
     id: '3',
@@ -137,6 +139,7 @@ export const mockInvoices: Invoice[] = [
     vatEnabled: false,
     vatPercentage: 0,
     vatAmount: 0,
+    amountPaid: 0,
   }
 ];
 

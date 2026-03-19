@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Clock, CheckCircle, Download, Eye, Search, Copy, Check, MessageCircle, Mail, Share2, Repeat, Briefcase, Pencil, MoreHorizontal } from 'lucide-react';
+import { Plus, Trash2, Clock, CheckCircle, Download, Eye, Search, Copy, Check, MessageCircle, Mail, Share2, Repeat, Briefcase, Pencil, MoreHorizontal, DollarSign, Wallet } from 'lucide-react';
 import { EngagementIndicator } from '@/components/nextoffice/shared';
 import { NOCard } from '@/components/nextoffice/shared';
-import { useInvoices, useClients, usePDF, useCommitments, useBusinessProfile } from '@/hooks';
-import { InvoiceFormData, NegotiationOptions } from '@/types';
+import { useInvoices, useClients, usePDF, useCommitments, useBusinessProfile, usePayments } from '@/hooks';
+import { InvoiceFormData, NegotiationOptions, PaymentType } from '@/types';
 import { formatCurrency, formatDate } from '@/utils/styles';
 import { SectionLoading } from '@/components/ui/LoadingStates';
 import { communicationService } from '@/services/api/communicationService';
@@ -31,6 +31,8 @@ const InvoicesPage: React.FC = () => {
   const [moreMenuInvoiceId, setMoreMenuInvoiceId] = useState<string | null>(null);
   const { commitments, markInstallmentPaid } = useCommitments();
   const [installmentPayDates, setInstallmentPayDates] = useState<Record<number, string>>({});
+  const [paymentType, setPaymentType] = useState<PaymentType>('full');
+  const [paymentAmount, setPaymentAmount] = useState<number>(0);
   
   const [formData, setFormData] = useState<InvoiceFormData>({
     clientId: '',
@@ -63,6 +65,8 @@ const InvoicesPage: React.FC = () => {
   const { clients, loading: clientsLoading } = useClients();
   const { generating, downloadInvoicePDF, previewInvoicePDF } = usePDF();
   const { businessProfile } = useBusinessProfile();
+  const invoiceIds = invoices.map(i => i.id);
+  const { recordPayment, getInvoicePayments } = usePayments(invoiceIds);
 
   // Initialize VAT defaults from business profile
   useEffect(() => {
@@ -139,7 +143,7 @@ const InvoicesPage: React.FC = () => {
   const filteredInvoices = invoices.filter(inv => {
     // Filter by tab
     let matchesTab = true;
-    if (filterTab === 'Outstanding') matchesTab = inv.status === 'sent' || inv.status === 'overdue' || inv.status === 'project_completed';
+    if (filterTab === 'Outstanding') matchesTab = inv.status === 'sent' || inv.status === 'overdue' || inv.status === 'project_completed' || inv.status === 'partially_paid';
     else if (filterTab === 'Overdue') matchesTab = inv.status === 'overdue';
     else if (filterTab === 'Paid') matchesTab = inv.status === 'paid';
     else if (filterTab === 'Recurring') matchesTab = inv.isRecurring === true;
@@ -205,6 +209,27 @@ const InvoicesPage: React.FC = () => {
   };
 
   const handleMarkAsPaid = async (id: string) => {
+    const inv = invoices.find(i => i.id === id);
+    if (!inv) return;
+    const remaining = inv.amount - inv.amountPaid;
+    const hasDeposit = inv.negotiationOptions?.allow_deposit && inv.negotiationOptions?.balance_after_completion;
+    const invPayments = getInvoicePayments(id);
+    const depositPaid = invPayments.some(p => p.type === 'deposit');
+
+    if (hasDeposit && !depositPaid) {
+      // First payment for a deposit invoice — default to deposit
+      const pct = inv.negotiationOptions?.deposit_max_percentage || 50;
+      setPaymentType('deposit');
+      setPaymentAmount(Math.round(inv.amount * (pct / 100)));
+    } else if (hasDeposit && depositPaid) {
+      // Deposit already paid — default to balance
+      setPaymentType('balance');
+      setPaymentAmount(remaining);
+    } else {
+      // Regular invoice
+      setPaymentType('full');
+      setPaymentAmount(remaining);
+    }
     setMarkingAsPaidId(id);
     setPaymentDate(new Date().toISOString().split('T')[0]);
     setInstallmentPayDates({});
@@ -253,37 +278,56 @@ const InvoicesPage: React.FC = () => {
   };
 
   const confirmMarkAsPaid = async () => {
-    if (markingAsPaidId) {
-      const invoice = invoices.find(i => i.id === markingAsPaidId);
-      await updateInvoiceStatus(markingAsPaidId, 'paid', paymentDate);
-      if (invoice) {
-        communicationService.create({
-          invoice_id: invoice.id,
-          client_id: invoice.clientId,
-          type: 'payment_received',
-          status: 'sent',
-          subject: `Payment received for ${invoice.number}`,
-          body: `Invoice marked as paid on ${paymentDate}`,
-        }).catch(console.error);
+    if (!markingAsPaidId) return;
+    const invoice = invoices.find(i => i.id === markingAsPaidId);
+    if (!invoice) return;
 
-        const clientEmail = clients.find(c => c.id === invoice.clientId)?.email;
-        if (clientEmail) {
-          supabase.functions.invoke('send-payment-received', {
-            body: {
-              invoiceId: invoice.id,
-              clientId: invoice.clientId,
-              recipientEmail: clientEmail,
-              recipientName: invoice.clientName,
-              invoiceNumber: invoice.number,
-              amount: invoice.amount,
-              paymentDate,
-              businessName: businessProfile?.businessName,
-            },
-          }).catch(console.error);
-        }
-      }
-      setMarkingAsPaidId(null);
+    const expectedAmount = paymentType === 'deposit'
+      ? Math.round(invoice.amount * ((invoice.negotiationOptions?.deposit_max_percentage || 50) / 100))
+      : invoice.amount - invoice.amountPaid;
+
+    // Record the payment
+    await recordPayment({
+      invoiceId: markingAsPaidId,
+      type: paymentType,
+      expectedAmount,
+      actualAmount: paymentAmount,
+      paymentDate,
+    });
+
+    // Determine new status
+    const newTotalPaid = invoice.amountPaid + paymentAmount;
+    const newStatus = newTotalPaid >= invoice.amount ? 'paid' : 'partially_paid';
+    await updateInvoiceStatus(markingAsPaidId, newStatus, newStatus === 'paid' ? paymentDate : undefined);
+
+    // Log communication
+    const typeLabel = paymentType === 'deposit' ? 'Deposit' : paymentType === 'balance' ? 'Balance' : 'Payment';
+    communicationService.create({
+      invoice_id: invoice.id,
+      client_id: invoice.clientId,
+      type: 'payment_received',
+      status: 'sent',
+      subject: `${typeLabel} received for ${invoice.number}`,
+      body: `${typeLabel} of ${formatCurrency(paymentAmount)} recorded on ${paymentDate}${paymentAmount !== expectedAmount ? ` (expected ${formatCurrency(expectedAmount)})` : ''}`,
+    }).catch(console.error);
+
+    const clientEmail = clients.find(c => c.id === invoice.clientId)?.email;
+    if (clientEmail) {
+      supabase.functions.invoke('send-payment-received', {
+        body: {
+          invoiceId: invoice.id,
+          clientId: invoice.clientId,
+          recipientEmail: clientEmail,
+          recipientName: invoice.clientName,
+          invoiceNumber: invoice.number,
+          amount: paymentAmount,
+          paymentDate,
+          businessName: businessProfile?.businessName,
+        },
+      }).catch(console.error);
     }
+
+    setMarkingAsPaidId(null);
   };
 
   const handleEditPaymentDate = (id: string, currentDate: string) => {
@@ -990,6 +1034,7 @@ const InvoicesPage: React.FC = () => {
               sent:              { label: 'Sent',         dot: 'bg-amber-400',  pill: 'bg-amber-50 text-amber-700 border-amber-200' },
               overdue:           { label: 'Overdue',      dot: 'bg-red-500',    pill: 'bg-red-50 text-red-700 border-red-200' },
               project_completed: { label: 'Project Done', dot: 'bg-indigo-500', pill: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+              partially_paid:    { label: 'Partial',      dot: 'bg-teal-500',   pill: 'bg-teal-50 text-teal-700 border-teal-200' },
             };
             const sc = statusCfg[inv.status] ?? { label: inv.status, dot: 'bg-gray-400', pill: 'bg-gray-50 text-gray-600 border-gray-200' };
             const daysOverdue = inv.status === 'overdue' ? Math.floor((Date.now() - new Date(inv.dueDate).getTime()) / 86400000) : 0;
@@ -1034,11 +1079,23 @@ const InvoicesPage: React.FC = () => {
                     </span>
                   )}
                 </div>
+                {/* Payment progress bar */}
+                {inv.amountPaid > 0 && inv.status !== 'paid' && (
+                  <div className="mb-2">
+                    <div className="flex justify-between text-[10px] mb-0.5">
+                      <span className="text-teal-700 font-medium">Paid {formatCurrency(inv.amountPaid)}</span>
+                      <span className="text-muted-foreground">Remaining {formatCurrency(inv.amount - inv.amountPaid)}</span>
+                    </div>
+                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-teal-500 rounded-full transition-all" style={{ width: `${Math.min(100, Math.round((inv.amountPaid / inv.amount) * 100))}%` }} />
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center gap-1 pt-2 border-t border-border">
                   <button onClick={() => previewInvoicePDF(getPDFData())} disabled={generating} className="p-1.5 rounded text-muted-foreground hover:text-blue-600 transition-colors" title="Preview"><Eye size={14} /></button>
                   <button onClick={() => downloadInvoicePDF(getPDFData())} disabled={generating} className="p-1.5 rounded text-muted-foreground hover:text-primary transition-colors" title="Download"><Download size={14} /></button>
                   <button onClick={() => { const link = `${window.location.origin}/invoice/${inv.number}/commitment`; navigator.clipboard.writeText(link); }} className="p-1.5 rounded text-muted-foreground hover:text-foreground transition-colors" title="Copy Link"><Copy size={14} /></button>
-                  {inv.status !== 'paid' && <button onClick={() => handleMarkAsPaid(inv.id)} className="ml-auto px-2 py-1 rounded text-[10px] font-semibold bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition-colors">Mark Paid</button>}
+                  {inv.status !== 'paid' && <button onClick={() => handleMarkAsPaid(inv.id)} className="ml-auto px-2 py-1 rounded text-[10px] font-semibold bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition-colors">{inv.amountPaid > 0 ? 'Record Payment' : 'Mark Paid'}</button>}
                   {inv.status !== 'paid' && <button onClick={() => handleEditInvoice(inv)} className="p-1.5 rounded text-muted-foreground hover:text-amber-600 transition-colors" title="Edit"><Pencil size={14} /></button>}
                   <button onClick={() => handleDeleteInvoice(inv.id)} className="p-1.5 rounded text-muted-foreground hover:text-red-500 transition-colors" title="Delete"><Trash2 size={14} /></button>
                 </div>
@@ -1077,6 +1134,7 @@ const InvoicesPage: React.FC = () => {
               sent:              { label: 'Sent',         dot: 'bg-amber-400',  pill: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800',  bar: 'bg-amber-400' },
               overdue:           { label: 'Overdue',      dot: 'bg-red-500',    pill: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-800',              bar: 'bg-red-500' },
               project_completed: { label: 'Project Done', dot: 'bg-indigo-500', pill: 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-800', bar: 'bg-indigo-500' },
+              partially_paid:    { label: 'Partial',      dot: 'bg-teal-500',   pill: 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-400 dark:border-teal-800',        bar: 'bg-teal-500' },
             };
             const sc = statusCfg[inv.status] ?? { label: inv.status, dot: 'bg-gray-400', pill: 'bg-gray-50 text-gray-600 border-gray-200', bar: 'bg-gray-300' };
 
@@ -1170,6 +1228,14 @@ const InvoicesPage: React.FC = () => {
                 <div className="px-3 py-3.5">
                   <span className="text-sm font-bold font-mono">{formatCurrency(inv.amount)}</span>
                   {inv.vatEnabled && <p className="text-[10px] text-muted-foreground">incl. VAT {inv.vatPercentage}%</p>}
+                  {inv.amountPaid > 0 && inv.status !== 'paid' && (
+                    <div className="mt-1">
+                      <div className="h-1 bg-gray-100 rounded-full overflow-hidden w-full">
+                        <div className="h-full bg-teal-500 rounded-full" style={{ width: `${Math.min(100, Math.round((inv.amountPaid / inv.amount) * 100))}%` }} />
+                      </div>
+                      <p className="text-[9px] text-teal-700 mt-0.5">Paid {formatCurrency(inv.amountPaid)}</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Due Date */}
@@ -1422,42 +1488,146 @@ const InvoicesPage: React.FC = () => {
                     Close
                   </button>
                 </>
-              ) : (
-                <>
-                  <h3 className="font-serif text-xl font-bold mb-4">Mark Invoice as Paid</h3>
-                  <p className="text-sm text-muted-foreground mb-6">
-                    Record the payment date for this invoice. This will stop all follow-ups.
-                  </p>
-                  
-                  <div className="mb-6">
-                    <label className="text-sm font-semibold mb-2 block">Payment Date</label>
-                    <input
-                      type="date"
-                      value={paymentDate}
-                      onChange={(e) => setPaymentDate(e.target.value)}
-                      max={new Date().toISOString().split('T')[0]}
-                      className="w-full px-3 py-2 rounded-lg border-2 border-border bg-background outline-none focus:border-primary transition-colors"
-                      autoFocus
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">Cannot select future dates</p>
-                  </div>
+              ) : (() => {
+                const inv = invoices.find(i => i.id === markingAsPaidId);
+                if (!inv) return null;
+                const remaining = inv.amount - inv.amountPaid;
+                const hasDeposit = inv.negotiationOptions?.allow_deposit && inv.negotiationOptions?.balance_after_completion;
+                const invPayments = getInvoicePayments(markingAsPaidId);
+                const depositPaid = invPayments.some(p => p.type === 'deposit');
+                const diff = paymentAmount - (paymentType === 'deposit'
+                  ? Math.round(inv.amount * ((inv.negotiationOptions?.deposit_max_percentage || 50) / 100))
+                  : remaining);
 
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => setMarkingAsPaidId(null)}
-                      className="flex-1 px-4 py-2 rounded-md border border-border text-muted-foreground hover:bg-accent transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={confirmMarkAsPaid}
-                      className="flex-1 px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors font-semibold"
-                    >
-                      Mark as Paid
-                    </button>
-                  </div>
-                </>
-              )}
+                return (
+                  <>
+                    <h3 className="font-serif text-xl font-bold mb-1">Record Payment</h3>
+                    <p className="text-sm text-muted-foreground mb-1">{inv.number} · {inv.clientName}</p>
+                    <div className="flex items-center gap-3 mb-5 text-sm">
+                      <span>Total: <span className="font-bold">{formatCurrency(inv.amount)}</span></span>
+                      <span>Paid: <span className="font-bold text-green-600">{formatCurrency(inv.amountPaid)}</span></span>
+                      <span>Remaining: <span className="font-bold text-amber-600">{formatCurrency(remaining)}</span></span>
+                    </div>
+
+                    {/* Payment history */}
+                    {invPayments.length > 0 && (
+                      <div className="mb-4 p-3 bg-muted/40 rounded-lg border border-border">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Payment History</p>
+                        <div className="space-y-1.5">
+                          {invPayments.map(p => (
+                            <div key={p.id} className="flex items-center justify-between text-xs">
+                              <div className="flex items-center gap-1.5">
+                                <CheckCircle size={10} className="text-green-600" />
+                                <span className="font-medium capitalize">{p.type}</span>
+                                <span className="text-muted-foreground">· {formatDate(p.paymentDate)}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold">{formatCurrency(p.actualAmount)}</span>
+                                {p.actualAmount !== p.expectedAmount && (
+                                  <span className={`text-[10px] ${p.actualAmount > p.expectedAmount ? 'text-blue-600' : 'text-red-500'}`}>
+                                    ({p.actualAmount > p.expectedAmount ? '+' : ''}{formatCurrency(p.actualAmount - p.expectedAmount)})
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Payment type selector — only for deposit invoices */}
+                    {hasDeposit && (
+                      <div className="mb-4">
+                        <label className="text-sm font-semibold mb-2 block">Payment Type</label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { type: 'deposit' as PaymentType, label: 'Deposit', icon: <Wallet size={14} />, disabled: depositPaid },
+                            { type: 'balance' as PaymentType, label: 'Balance', icon: <Briefcase size={14} />, disabled: !depositPaid },
+                            { type: 'partial' as PaymentType, label: 'Custom', icon: <DollarSign size={14} />, disabled: false },
+                          ].map(opt => (
+                            <button
+                              key={opt.type}
+                              onClick={() => {
+                                setPaymentType(opt.type);
+                                if (opt.type === 'deposit') {
+                                  setPaymentAmount(Math.round(inv.amount * ((inv.negotiationOptions?.deposit_max_percentage || 50) / 100)));
+                                } else if (opt.type === 'balance') {
+                                  setPaymentAmount(remaining);
+                                } else {
+                                  setPaymentAmount(0);
+                                }
+                              }}
+                              disabled={opt.disabled}
+                              className={`flex flex-col items-center gap-1 p-2.5 rounded-lg border-2 text-xs font-medium transition-colors ${
+                                paymentType === opt.type
+                                  ? 'border-primary bg-primary/5 text-primary'
+                                  : opt.disabled
+                                    ? 'border-border bg-muted/30 text-muted-foreground/50 cursor-not-allowed'
+                                    : 'border-border hover:border-primary/50'
+                              }`}
+                            >
+                              {opt.icon}
+                              {opt.label}
+                              {opt.disabled && depositPaid && opt.type === 'deposit' && <span className="text-[9px] text-green-600">Done</span>}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Amount field — always editable */}
+                    <div className="mb-4">
+                      <label className="text-sm font-semibold mb-2 block">Amount Received</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-sm">R</span>
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.01}
+                          value={paymentAmount || ''}
+                          onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)}
+                          className="w-full pl-8 pr-3 py-2 rounded-lg border-2 border-border bg-background outline-none focus:border-primary transition-colors text-lg font-bold font-mono"
+                          placeholder="0.00"
+                        />
+                      </div>
+                      {diff !== 0 && paymentAmount > 0 && (
+                        <p className={`text-xs mt-1 font-medium ${diff > 0 ? 'text-blue-600' : 'text-red-500'}`}>
+                          {diff > 0 ? `Overpayment of ${formatCurrency(diff)}` : `Underpayment of ${formatCurrency(Math.abs(diff))}`}
+                          {diff < 0 && ` — ${formatCurrency(remaining - paymentAmount)} will remain outstanding`}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Payment date */}
+                    <div className="mb-6">
+                      <label className="text-sm font-semibold mb-2 block">Payment Date</label>
+                      <input
+                        type="date"
+                        value={paymentDate}
+                        onChange={(e) => setPaymentDate(e.target.value)}
+                        max={new Date().toISOString().split('T')[0]}
+                        className="w-full px-3 py-2 rounded-lg border-2 border-border bg-background outline-none focus:border-primary transition-colors"
+                      />
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setMarkingAsPaidId(null)}
+                        className="flex-1 px-4 py-2 rounded-md border border-border text-muted-foreground hover:bg-accent transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={confirmMarkAsPaid}
+                        disabled={paymentAmount <= 0}
+                        className="flex-1 px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors font-semibold disabled:opacity-50"
+                      >
+                        {paymentAmount >= remaining ? 'Mark as Paid' : `Record ${paymentType === 'deposit' ? 'Deposit' : paymentType === 'balance' ? 'Balance' : 'Payment'}`}
+                      </button>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </NOCard>
         </div>

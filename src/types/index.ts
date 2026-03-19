@@ -50,6 +50,21 @@ export interface Invoice {
   vatPercentage: number;
   vatAmount: number;
   negotiationOptions?: NegotiationOptions;
+  amountPaid: number;
+  payments?: Payment[];
+}
+
+export type PaymentType = 'deposit' | 'balance' | 'full' | 'partial';
+
+export interface Payment {
+  id: string;
+  invoiceId: string;
+  type: PaymentType;
+  expectedAmount: number;
+  actualAmount: number;
+  notes?: string;
+  paymentDate: string;
+  createdAt: string;
 }
 
 export interface DashboardStats {

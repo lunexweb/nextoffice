@@ -6,3 +6,4 @@ export { useClients } from './useClients';
 export { useInvoices } from './useInvoices';
 export { useCommitments } from './useCommitments';
 export { usePDF } from './usePDF';
+export { usePayments } from './usePayments';

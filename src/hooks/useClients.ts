@@ -53,16 +53,18 @@ export const useClients = () => {
     }
   };
 
-  const deleteClient = async (id: string): Promise<boolean> => {
+  const deleteClient = async (id: string): Promise<{ success: boolean; error?: string }> => {
     try {
       setLoading(true);
-      setError(null);
       await clientService.delete(id);
       setClients(prev => prev.filter(c => c.id !== id));
-      return true;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete client');
-      return false;
+      return { success: true };
+    } catch (err: any) {
+      const isFK = err?.code === '23503' || String(err?.message || '').toLowerCase().includes('foreign key');
+      const msg = isFK
+        ? 'This client has existing invoices or records. Please delete their invoices first before removing the client.'
+        : (err instanceof Error ? err.message : 'Failed to delete client');
+      return { success: false, error: msg };
     } finally {
       setLoading(false);
     }

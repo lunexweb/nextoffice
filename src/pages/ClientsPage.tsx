@@ -119,8 +119,11 @@ const ClientsPage: React.FC = () => {
   };
 
   const confirmDelete = async () => {
-    await deleteClient(deleteModal.clientId);
+    const result = await deleteClient(deleteModal.clientId);
     setDeleteModal({ show: false, clientId: '', clientName: '' });
+    if (!result.success) {
+      setErrorModal({ show: true, message: result.error || 'Failed to delete client.' });
+    }
   };
 
   const handleCancel = () => {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Clock, CheckCircle, Download, Eye, Search, Copy, Check, MessageCircle, Mail, Share2, Repeat, Briefcase, Pencil, MoreHorizontal } from 'lucide-react';
 import { EngagementIndicator } from '@/components/nextoffice/shared';
 import { NOCard } from '@/components/nextoffice/shared';
@@ -57,11 +57,21 @@ const InvoicesPage: React.FC = () => {
 
   const [vatEnabled, setVatEnabled] = useState(false);
   const [vatPercentage, setVatPercentage] = useState(15);
+  const [vatInitialized, setVatInitialized] = useState(false);
 
   const { invoices, loading, error, createInvoice, updateInvoice, deleteInvoice, updateInvoiceStatus } = useInvoices();
   const { clients, loading: clientsLoading } = useClients();
   const { generating, downloadInvoicePDF, previewInvoicePDF } = usePDF();
   const { businessProfile } = useBusinessProfile();
+
+  // Initialize VAT defaults from business profile
+  useEffect(() => {
+    if (businessProfile?.vatSettings && !vatInitialized) {
+      setVatEnabled(businessProfile.vatSettings.enabled);
+      setVatPercentage(businessProfile.vatSettings.percentage || 15);
+      setVatInitialized(true);
+    }
+  }, [businessProfile, vatInitialized]);
   const [searchTerm, setSearchTerm] = useState('');
 
   const handleEditRecurring = (inv: typeof invoices[0]) => {
@@ -101,6 +111,8 @@ const InvoicesPage: React.FC = () => {
       isRecurring: inv.isRecurring || false,
       recurringDay: inv.recurringDay || 1,
     });
+    setVatEnabled(inv.vatEnabled || false);
+    setVatPercentage(inv.vatPercentage || 15);
     setSent(false);
     setView('create');
   };
@@ -113,7 +125,7 @@ const InvoicesPage: React.FC = () => {
     }
     setIsSaving(true);
     try {
-      const updated = await updateInvoice(editingInvoiceId, { ...formData, negotiationOptions });
+      const updated = await updateInvoice(editingInvoiceId, { ...formData, negotiationOptions, vatEnabled, vatPercentage });
       if (updated) {
         setEditingInvoiceId(null);
         setView('list');
@@ -157,7 +169,7 @@ const InvoicesPage: React.FC = () => {
 
     setIsSaving(true);
     try {
-      const newInvoice = await createInvoice({ ...formData, negotiationOptions });
+      const newInvoice = await createInvoice({ ...formData, negotiationOptions, vatEnabled, vatPercentage });
       if (newInvoice) {
         setCreatedInvoiceNumber(newInvoice.number);
         setCreatedInvoiceId(newInvoice.id);
@@ -985,7 +997,8 @@ const InvoicesPage: React.FC = () => {
             const commitmentCfg: Record<string, string> = { pending: 'bg-amber-50 text-amber-700 border-amber-200', approved: 'bg-green-50 text-green-700 border-green-200', completed: 'bg-green-50 text-green-700 border-green-200', declined: 'bg-red-50 text-red-600 border-red-200' };
             const getPDFData = () => {
               const client = clients.find(c => c.id === inv.clientId);
-              return { invoiceNumber: inv.number, invoiceDate: formatDate(inv.createdAt || new Date().toISOString()), dueDate: formatDate(inv.dueDate), status: inv.status, businessName: businessProfile?.businessName || '', businessEmail: businessProfile?.email || '', businessAddress: [businessProfile?.address, businessProfile?.city].filter(Boolean).join(', '), businessPhone: businessProfile?.phone || '', clientName: inv.clientName, clientEmail: client?.email, clientAddress: client?.address, items: inv.lineItems?.length > 0 ? inv.lineItems.map(item => ({ description: item.description, quantity: item.quantity, rate: item.rate, amount: item.quantity * item.rate })) : [{ description: 'Service', quantity: 1, rate: inv.amount, amount: inv.amount }], subtotal: inv.amount, total: inv.amount, amountPaid: inv.status === 'paid' ? inv.amount : 0, balance: inv.status === 'paid' ? 0 : inv.amount };
+              const lineSub = inv.lineItems?.length > 0 ? inv.lineItems.reduce((s, li) => s + li.quantity * li.rate, 0) : inv.amount;
+              return { invoiceNumber: inv.number, invoiceDate: formatDate(inv.createdAt || new Date().toISOString()), dueDate: formatDate(inv.dueDate), status: inv.status, businessName: businessProfile?.businessName || '', businessEmail: businessProfile?.email || '', businessAddress: [businessProfile?.address, businessProfile?.city].filter(Boolean).join(', '), businessPhone: businessProfile?.phone || '', clientName: inv.clientName, clientEmail: client?.email, clientAddress: client?.address, items: inv.lineItems?.length > 0 ? inv.lineItems.map(item => ({ description: item.description, quantity: item.quantity, rate: item.rate, amount: item.quantity * item.rate })) : [{ description: 'Service', quantity: 1, rate: lineSub, amount: lineSub }], subtotal: lineSub, tax: inv.vatEnabled ? inv.vatAmount : undefined, taxRate: inv.vatEnabled ? inv.vatPercentage : undefined, total: inv.amount, amountPaid: inv.status === 'paid' ? inv.amount : 0, balance: inv.status === 'paid' ? 0 : inv.amount };
             };
 
             return (
@@ -1008,7 +1021,10 @@ const InvoicesPage: React.FC = () => {
                 </div>
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-sm font-medium truncate mr-2">{inv.clientName}</span>
-                  <span className="text-sm font-bold font-mono flex-shrink-0">{formatCurrency(inv.amount)}</span>
+                  <div className="text-right flex-shrink-0">
+                    <span className="text-sm font-bold font-mono">{formatCurrency(inv.amount)}</span>
+                    {inv.vatEnabled && <p className="text-[9px] text-muted-foreground">incl. VAT {inv.vatPercentage}%</p>}
+                  </div>
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
                   <span>Due {formatDate(inv.dueDate)}{daysOverdue > 0 ? ` · ${daysOverdue}d overdue` : ''}</span>
@@ -1082,6 +1098,9 @@ const InvoicesPage: React.FC = () => {
 
             const getPDFData = () => {
               const client = clients.find(c => c.id === inv.clientId);
+              const lineSubtotal = inv.lineItems?.length > 0
+                ? inv.lineItems.reduce((s, li) => s + li.quantity * li.rate, 0)
+                : inv.amount;
               return {
                 invoiceNumber: inv.number,
                 invoiceDate: formatDate(inv.createdAt || new Date().toISOString()),
@@ -1096,8 +1115,10 @@ const InvoicesPage: React.FC = () => {
                 clientAddress: client?.address,
                 items: inv.lineItems?.length > 0
                   ? inv.lineItems.map(item => ({ description: item.description, quantity: item.quantity, rate: item.rate, amount: item.quantity * item.rate }))
-                  : [{ description: 'Service', quantity: 1, rate: inv.amount, amount: inv.amount }],
-                subtotal: inv.amount,
+                  : [{ description: 'Service', quantity: 1, rate: lineSubtotal, amount: lineSubtotal }],
+                subtotal: lineSubtotal,
+                tax: inv.vatEnabled ? inv.vatAmount : undefined,
+                taxRate: inv.vatEnabled ? inv.vatPercentage : undefined,
                 total: inv.amount,
                 amountPaid: inv.status === 'paid' ? inv.amount : 0,
                 balance: inv.status === 'paid' ? 0 : inv.amount,
@@ -1148,6 +1169,7 @@ const InvoicesPage: React.FC = () => {
                 {/* Amount */}
                 <div className="px-3 py-3.5">
                   <span className="text-sm font-bold font-mono">{formatCurrency(inv.amount)}</span>
+                  {inv.vatEnabled && <p className="text-[10px] text-muted-foreground">incl. VAT {inv.vatPercentage}%</p>}
                 </div>
 
                 {/* Due Date */}

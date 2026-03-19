@@ -19,6 +19,9 @@ const mapInvoice = (row: any): Invoice => ({
   recurringDay: row.recurring_day || undefined,
   viewCount: row.view_count || 0,
   lastViewedAt: row.last_viewed_at || undefined,
+  vatEnabled: row.vat_enabled || false,
+  vatPercentage: parseFloat(row.vat_percentage) || 0,
+  vatAmount: parseFloat(row.vat_amount) || 0,
 });
 
 export const invoiceService = {
@@ -75,6 +78,10 @@ export const invoiceService = {
     const subtotal = formData.lineItems.reduce(
       (sum, item) => sum + item.quantity * item.rate, 0
     );
+    const vatEnabled = formData.vatEnabled || false;
+    const vatPct = formData.vatPercentage || 0;
+    const vatAmount = vatEnabled ? Math.round(subtotal * (vatPct / 100)) : 0;
+    const total = subtotal + vatAmount;
 
     const { data: inserted, error } = await supabase
       .from('invoices')
@@ -82,7 +89,7 @@ export const invoiceService = {
         user_id: user.id,
         client_id: formData.clientId,
         number: invoiceNumber,
-        amount: subtotal,
+        amount: total,
         status: 'sent',
         due_date: formData.dueDate,
         notes: formData.notes || null,
@@ -91,6 +98,9 @@ export const invoiceService = {
         line_items: formData.lineItems,
         banking_details: bankingDetails,
         negotiation_options: formData.negotiationOptions || null,
+        vat_enabled: vatEnabled,
+        vat_percentage: vatPct,
+        vat_amount: vatAmount,
       }])
       .select('*')
       .single();
@@ -123,17 +133,24 @@ export const invoiceService = {
     const subtotal = formData.lineItems.reduce(
       (sum, item) => sum + item.quantity * item.rate, 0
     );
+    const vatEnabled = formData.vatEnabled || false;
+    const vatPct = formData.vatPercentage || 0;
+    const vatAmount = vatEnabled ? Math.round(subtotal * (vatPct / 100)) : 0;
+    const total = subtotal + vatAmount;
     const { data, error } = await supabase
       .from('invoices')
       .update({
         client_id: formData.clientId,
-        amount: subtotal,
+        amount: total,
         due_date: formData.dueDate,
         notes: formData.notes || null,
         is_recurring: formData.isRecurring || false,
         recurring_day: formData.recurringDay || null,
         line_items: formData.lineItems,
         negotiation_options: formData.negotiationOptions || null,
+        vat_enabled: vatEnabled,
+        vat_percentage: vatPct,
+        vat_amount: vatAmount,
       })
       .eq('id', id)
       .select(INV_SELECT)

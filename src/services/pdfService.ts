@@ -180,7 +180,7 @@ class PDFService {
     yPosition += 6;
     
     if (data.tax && data.taxRate) {
-      doc.text(`Tax (${data.taxRate}%):`, totalsX, yPosition);
+      doc.text(`VAT (${data.taxRate}%):`, totalsX, yPosition);
       doc.text(`R${data.tax.toLocaleString()}`, 185, yPosition, { align: 'right' });
       yPosition += 6;
     }

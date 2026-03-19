@@ -85,6 +85,9 @@ export const mockInvoices: Invoice[] = [
     isRecurring: true,
     recurringDay: 1,
     viewCount: 3,
+    vatEnabled: false,
+    vatPercentage: 0,
+    vatAmount: 0,
   },
   {
     id: '2',
@@ -107,6 +110,9 @@ export const mockInvoices: Invoice[] = [
     isRecurring: true,
     recurringDay: 15,
     viewCount: 1,
+    vatEnabled: false,
+    vatPercentage: 0,
+    vatAmount: 0,
   },
   {
     id: '3',
@@ -128,6 +134,9 @@ export const mockInvoices: Invoice[] = [
     },
     isRecurring: false,
     viewCount: 0,
+    vatEnabled: false,
+    vatPercentage: 0,
+    vatAmount: 0,
   }
 ];
 

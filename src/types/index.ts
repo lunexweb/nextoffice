@@ -46,6 +46,9 @@ export interface Invoice {
   recurringDay?: number;
   viewCount: number;
   lastViewedAt?: string;
+  vatEnabled: boolean;
+  vatPercentage: number;
+  vatAmount: number;
 }
 
 export interface DashboardStats {
@@ -127,6 +130,8 @@ export interface InvoiceFormData {
   isRecurring?: boolean;
   recurringDay?: number;
   negotiationOptions?: NegotiationOptions;
+  vatEnabled?: boolean;
+  vatPercentage?: number;
 }
 
 export interface NegotiationOptions {

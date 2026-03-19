@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Users, UserPlus, Clock, CheckCircle, XCircle, Pause, RefreshCw, Trash2, LogOut, Search, Plus, Target, Pencil } from 'lucide-react';
+import { Users, UserPlus, Clock, CheckCircle, XCircle, Pause, RefreshCw, Trash2, LogOut, Search, Plus, Target, Pencil, ShieldCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '@/lib/supabase';
 
@@ -324,6 +324,23 @@ export default function CEODashboardPage() {
     }
   };
 
+  // ── Role management ──
+  const handleToggleAdmin = async (user: any) => {
+    const currentRole = user.role?.role || 'user';
+    const newRole = currentRole === 'admin' ? 'user' : 'admin';
+    try {
+      const { error } = await supabase
+        .from('user_roles')
+        .update({ role: newRole })
+        .eq('user_id', user.id);
+      if (error) throw error;
+      toast({ title: 'Role updated', description: `${user.full_name || user.email} is now ${newRole === 'admin' ? 'an Admin' : 'a User'}.` });
+      await loadData();
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to update role', variant: 'destructive' });
+    }
+  };
+
   // ── Lead CRUD ──
   const handleAddLead = async () => {
     if (!newLeadData.name.trim()) {
@@ -545,7 +562,13 @@ export default function CEODashboardPage() {
                         <p className="font-semibold text-sm sm:text-base truncate">{user.full_name || 'No name'}</p>
                         <p className="text-xs sm:text-sm text-muted-foreground truncate">{user.email}</p>
                       </div>
-                      <div className="flex-shrink-0">
+                      <div className="flex-shrink-0 flex items-center gap-1.5">
+                        {(user.role?.role === 'admin' || user.role?.role === 'ceo') && (
+                          <Badge variant="outline" className="gap-1 text-[10px] border-purple-300 text-purple-700 dark:border-purple-700 dark:text-purple-400">
+                            <ShieldCheck className="h-3 w-3" />
+                            {user.role.role}
+                          </Badge>
+                        )}
                         {getStatusBadge(user.subscription?.status || 'pending')}
                       </div>
                     </div>
@@ -589,6 +612,17 @@ export default function CEODashboardPage() {
                       <Button onClick={() => openManageDialog(user)} variant="outline" size="sm" className="flex-1 sm:flex-none text-xs">
                         Manage
                       </Button>
+                      {user.role?.role !== 'ceo' && (
+                        <Button
+                          onClick={() => handleToggleAdmin(user)}
+                          variant={user.role?.role === 'admin' ? 'secondary' : 'outline'}
+                          size="sm"
+                          className="text-xs gap-1"
+                        >
+                          <ShieldCheck className="h-3.5 w-3.5" />
+                          {user.role?.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
+                        </Button>
+                      )}
                       <Button
                         onClick={() => { setUserToDelete(user); setShowDeleteUserDialog(true); }}
                         variant="destructive"

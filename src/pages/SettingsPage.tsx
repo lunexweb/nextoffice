@@ -111,10 +111,11 @@ const SettingsPage: React.FC = () => {
     {
       id: 'security',
       title: 'Security',
-      description: 'Password, authentication and privacy settings',
+      description: 'Change your password',
       icon: Shield,
-      status: 'coming-soon',
-      badge: 'Coming Soon'
+      status: 'complete',
+      badge: 'Active',
+      path: '/app/settings/security'
     },
     {
       id: 'integrations',

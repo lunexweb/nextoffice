@@ -17,6 +17,7 @@ import SettingsPage from '@/pages/SettingsPage';
 import UserProfilePage from '@/pages/UserProfilePage';
 import PaymentSettingsPage from '@/pages/PaymentSettingsPage';
 import ReminderSettingsPage from '@/pages/ReminderSettingsPage';
+import ChangePasswordPage from '@/pages/ChangePasswordPage';
 import CommitmentsPage from '@/pages/CommitmentsPage';
 import ClientCommitmentPage from '@/pages/ClientCommitmentPage';
 import CEODashboardPage from '@/pages/CEODashboardPage';
@@ -61,6 +62,7 @@ const AppRoutes = () => (
       <Route path="settings/profile" element={<UserProfilePage />} />
       <Route path="settings/payment" element={<PaymentSettingsPage />} />
       <Route path="settings/reminders" element={<ReminderSettingsPage />} />
+      <Route path="settings/security" element={<ChangePasswordPage />} />
     </Route>
   </Routes>
 );

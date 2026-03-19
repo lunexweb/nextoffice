@@ -9,9 +9,25 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Users, UserPlus, Clock, CheckCircle, XCircle, Pause, RefreshCw, Trash2, LogOut } from 'lucide-react';
+import { Users, UserPlus, Clock, CheckCircle, XCircle, Pause, RefreshCw, Trash2, LogOut, Search, Plus, Target, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '@/lib/supabase';
+
+interface Lead {
+  id: string;
+  name: string;
+  business_name: string | null;
+  industry: string | null;
+  email: string | null;
+  whatsapp: string | null;
+  phone: string | null;
+  notes: string | null;
+  converted: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+const INDUSTRY_OPTIONS = ['Web/Creative', 'IT Support', 'Consulting', 'Security', 'Construction', 'Accounting', 'Cleaning', 'Recruitment', 'Other'];
 
 export default function CEODashboardPage() {
   const [users, setUsers] = useState<any[]>([]);
@@ -27,6 +43,16 @@ export default function CEODashboardPage() {
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const { toast } = useToast();
+
+  // Leads state
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [showAddLeadDialog, setShowAddLeadDialog] = useState(false);
+  const [leadSearch, setLeadSearch] = useState('');
+  const [leadFilter, setLeadFilter] = useState<'all' | 'converted' | 'open'>('all');
+  const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
+  const [newLeadData, setNewLeadData] = useState({
+    name: '', business_name: '', industry: '', email: '', whatsapp: '', phone: '', notes: '',
+  });
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -58,7 +84,7 @@ export default function CEODashboardPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [{ data: profilesData }, { data: requestsData }] = await Promise.all([
+      const [{ data: profilesData }, { data: requestsData }, { data: leadsData }] = await Promise.all([
         supabase
           .from('profiles')
           .select(`
@@ -69,6 +95,10 @@ export default function CEODashboardPage() {
           .order('created_at', { ascending: false }),
         supabase
           .from('access_requests')
+          .select('*')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('leads')
           .select('*')
           .order('created_at', { ascending: false }),
       ]);
@@ -84,6 +114,7 @@ export default function CEODashboardPage() {
 
       setUsers(mapped);
       setAccessRequests(requestsData || []);
+      setLeads((leadsData || []) as Lead[]);
     } catch {
       toast({ title: 'Error loading data', variant: 'destructive' });
     } finally {
@@ -254,6 +285,95 @@ export default function CEODashboardPage() {
     }
   };
 
+  // ── Lead CRUD ──
+  const handleAddLead = async () => {
+    if (!newLeadData.name.trim()) {
+      toast({ title: 'Error', description: 'Name is required', variant: 'destructive' });
+      return;
+    }
+    try {
+      const { error } = await supabase.from('leads').insert([{
+        name: newLeadData.name.trim(),
+        business_name: newLeadData.business_name.trim() || null,
+        industry: newLeadData.industry || null,
+        email: newLeadData.email.trim() || null,
+        whatsapp: newLeadData.whatsapp.trim() || null,
+        phone: newLeadData.phone.trim() || null,
+        notes: newLeadData.notes.trim() || null,
+      }]);
+      if (error) throw error;
+      toast({ title: 'Lead added' });
+      setShowAddLeadDialog(false);
+      setNewLeadData({ name: '', business_name: '', industry: '', email: '', whatsapp: '', phone: '', notes: '' });
+      await loadData();
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to add lead', variant: 'destructive' });
+    }
+  };
+
+  const handleUpdateLead = async (id: string, field: string, value: string | boolean) => {
+    try {
+      const { error } = await supabase.from('leads').update({ [field]: value || null }).eq('id', id);
+      if (error) throw error;
+      setLeads(prev => prev.map(l => l.id === id ? { ...l, [field]: value || null } : l));
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to update lead', variant: 'destructive' });
+    }
+  };
+
+  const handleToggleConverted = async (lead: Lead) => {
+    const newVal = !lead.converted;
+    await handleUpdateLead(lead.id, 'converted', newVal);
+    setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, converted: newVal } : l));
+    if (newVal) {
+      toast({
+        title: 'Lead converted!',
+        description: `${lead.name} marked as converted.`,
+        action: (
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs"
+            onClick={() => {
+              setNewUserData({
+                email: lead.email || '',
+                full_name: lead.name,
+                password: '',
+                billing_cycle_days: 30,
+              });
+              setShowCreateUserDialog(true);
+            }}
+          >
+            <UserPlus className="h-3 w-3 mr-1" />
+            Create User
+          </Button>
+        ),
+      });
+    }
+  };
+
+  const handleDeleteLead = async (id: string) => {
+    try {
+      const { error } = await supabase.from('leads').delete().eq('id', id);
+      if (error) throw error;
+      setLeads(prev => prev.filter(l => l.id !== id));
+      toast({ title: 'Lead deleted' });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to delete lead', variant: 'destructive' });
+    }
+  };
+
+  const filteredLeads = leads.filter(lead => {
+    const matchesFilter = leadFilter === 'all' || (leadFilter === 'converted' ? lead.converted : !lead.converted);
+    const search = leadSearch.toLowerCase();
+    const matchesSearch = !search ||
+      lead.name.toLowerCase().includes(search) ||
+      (lead.business_name || '').toLowerCase().includes(search) ||
+      (lead.email || '').toLowerCase().includes(search) ||
+      (lead.industry || '').toLowerCase().includes(search);
+    return matchesFilter && matchesSearch;
+  });
+
   const openManageDialog = (user: any) => {
     setSelectedUser(user);
     setManageData({
@@ -295,6 +415,8 @@ export default function CEODashboardPage() {
     pending: users.filter(u => u.subscription?.status === 'pending').length,
     cancelled: users.filter(u => u.subscription?.status === 'cancelled').length,
     pendingRequests: accessRequests.filter(r => r.status === 'pending').length,
+    totalLeads: leads.length,
+    convertedLeads: leads.filter(l => l.converted).length,
   };
 
   return (
@@ -342,9 +464,10 @@ export default function CEODashboardPage() {
       </div>
 
       <Tabs defaultValue="users" className="space-y-3 sm:space-y-4">
-        <TabsList className="w-full sm:w-auto grid grid-cols-2 sm:inline-flex">
+        <TabsList className="w-full sm:w-auto grid grid-cols-3 sm:inline-flex">
           <TabsTrigger value="users" className="text-xs sm:text-sm">Users</TabsTrigger>
-          <TabsTrigger value="requests" className="text-xs sm:text-sm">Access Requests</TabsTrigger>
+          <TabsTrigger value="requests" className="text-xs sm:text-sm">Requests</TabsTrigger>
+          <TabsTrigger value="leads" className="text-xs sm:text-sm">Leads ({stats.totalLeads})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="space-y-3 sm:space-y-4">
@@ -496,7 +619,256 @@ export default function CEODashboardPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* ── Leads Tab ── */}
+        <TabsContent value="leads" className="space-y-3 sm:space-y-4">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Search leads..."
+                value={leadSearch}
+                onChange={e => setLeadSearch(e.target.value)}
+                className="pl-9 text-xs sm:text-sm"
+              />
+            </div>
+            <Select value={leadFilter} onValueChange={(v: any) => setLeadFilter(v)}>
+              <SelectTrigger className="w-full sm:w-[150px] text-xs sm:text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Leads</SelectItem>
+                <SelectItem value="open">Open</SelectItem>
+                <SelectItem value="converted">Converted</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button size="sm" onClick={() => setShowAddLeadDialog(true)} className="text-xs sm:text-sm">
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              Add Lead
+            </Button>
+          </div>
+
+          {/* Stats row */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
+            <Card>
+              <CardContent className="p-3 sm:p-4 flex items-center gap-2">
+                <Target className="h-4 w-4 text-blue-500" />
+                <div>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">Total Leads</p>
+                  <p className="text-lg font-bold">{stats.totalLeads}</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-3 sm:p-4 flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <div>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">Converted</p>
+                  <p className="text-lg font-bold">{stats.convertedLeads}</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-3 sm:p-4 flex items-center gap-2">
+                <Clock className="h-4 w-4 text-amber-500" />
+                <div>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">Open</p>
+                  <p className="text-lg font-bold">{stats.totalLeads - stats.convertedLeads}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader className="p-3 sm:p-6">
+              <CardTitle className="text-sm sm:text-lg">Lead Tracker</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Click any cell to edit inline. Changes save automatically.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0 sm:p-0">
+              {/* Desktop table */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="px-3 py-2 text-left font-medium text-xs text-muted-foreground w-8">✓</th>
+                      <th className="px-3 py-2 text-left font-medium text-xs text-muted-foreground">Name</th>
+                      <th className="px-3 py-2 text-left font-medium text-xs text-muted-foreground">Business</th>
+                      <th className="px-3 py-2 text-left font-medium text-xs text-muted-foreground">Industry</th>
+                      <th className="px-3 py-2 text-left font-medium text-xs text-muted-foreground">Email</th>
+                      <th className="px-3 py-2 text-left font-medium text-xs text-muted-foreground">WhatsApp</th>
+                      <th className="px-3 py-2 text-left font-medium text-xs text-muted-foreground">Phone</th>
+                      <th className="px-3 py-2 text-left font-medium text-xs text-muted-foreground">Notes</th>
+                      <th className="px-3 py-2 text-left font-medium text-xs text-muted-foreground w-16"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredLeads.map(lead => (
+                      <tr key={lead.id} className={`border-b hover:bg-muted/30 transition-colors ${lead.converted ? 'bg-green-50/50 dark:bg-green-950/10' : ''}`}>
+                        <td className="px-3 py-2">
+                          <input
+                            type="checkbox"
+                            checked={lead.converted}
+                            onChange={() => handleToggleConverted(lead)}
+                            className="h-4 w-4 rounded border-border cursor-pointer accent-green-600"
+                          />
+                        </td>
+                        {(['name', 'business_name', 'industry', 'email', 'whatsapp', 'phone', 'notes'] as const).map(field => (
+                          <td key={field} className="px-3 py-1">
+                            {editingCell?.id === lead.id && editingCell.field === field ? (
+                              field === 'industry' ? (
+                                <select
+                                  autoFocus
+                                  value={(lead[field] as string) || ''}
+                                  onChange={e => { handleUpdateLead(lead.id, field, e.target.value); setEditingCell(null); }}
+                                  onBlur={() => setEditingCell(null)}
+                                  className="w-full px-1.5 py-1 text-xs border rounded bg-background outline-none focus:ring-1 focus:ring-primary"
+                                >
+                                  <option value="">—</option>
+                                  {INDUSTRY_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                                </select>
+                              ) : field === 'notes' ? (
+                                <textarea
+                                  autoFocus
+                                  defaultValue={(lead[field] as string) || ''}
+                                  onBlur={e => { handleUpdateLead(lead.id, field, e.target.value); setEditingCell(null); }}
+                                  onKeyDown={e => { if (e.key === 'Escape') setEditingCell(null); }}
+                                  rows={2}
+                                  className="w-full px-1.5 py-1 text-xs border rounded bg-background outline-none focus:ring-1 focus:ring-primary resize-none"
+                                />
+                              ) : (
+                                <input
+                                  autoFocus
+                                  type={field === 'email' ? 'email' : 'text'}
+                                  defaultValue={(lead[field] as string) || ''}
+                                  onBlur={e => { handleUpdateLead(lead.id, field, e.target.value); setEditingCell(null); }}
+                                  onKeyDown={e => { if (e.key === 'Enter') { handleUpdateLead(lead.id, field, (e.target as HTMLInputElement).value); setEditingCell(null); } if (e.key === 'Escape') setEditingCell(null); }}
+                                  className="w-full px-1.5 py-1 text-xs border rounded bg-background outline-none focus:ring-1 focus:ring-primary"
+                                />
+                              )
+                            ) : (
+                              <div
+                                onClick={() => setEditingCell({ id: lead.id, field })}
+                                className={`px-1.5 py-1 rounded cursor-pointer hover:bg-muted min-h-[28px] text-xs flex items-center gap-1 group ${lead.converted && field === 'name' ? 'line-through text-muted-foreground' : ''}`}
+                              >
+                                <span className="flex-1 truncate">{(lead[field] as string) || <span className="text-muted-foreground/40">—</span>}</span>
+                                <Pencil className="h-2.5 w-2.5 text-muted-foreground/0 group-hover:text-muted-foreground/50 flex-shrink-0" />
+                              </div>
+                            )}
+                          </td>
+                        ))}
+                        <td className="px-3 py-2">
+                          <Button variant="ghost" size="sm" onClick={() => handleDeleteLead(lead.id)} className="h-7 w-7 p-0 text-muted-foreground hover:text-red-600">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredLeads.length === 0 && (
+                      <tr>
+                        <td colSpan={9} className="px-3 py-8 text-center text-sm text-muted-foreground">
+                          {leadSearch ? 'No leads match your search.' : 'No leads yet. Click "Add Lead" to start tracking.'}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile card list */}
+              <div className="md:hidden space-y-3 p-3">
+                {filteredLeads.map(lead => (
+                  <div key={lead.id} className={`p-3 border rounded-lg space-y-2 ${lead.converted ? 'bg-green-50/50 dark:bg-green-950/10 border-green-200 dark:border-green-900/40' : ''}`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <input
+                          type="checkbox"
+                          checked={lead.converted}
+                          onChange={() => handleToggleConverted(lead)}
+                          className="h-4 w-4 rounded border-border cursor-pointer accent-green-600 flex-shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <p className={`font-semibold text-sm truncate ${lead.converted ? 'line-through text-muted-foreground' : ''}`}>{lead.name}</p>
+                          {lead.business_name && <p className="text-xs text-muted-foreground truncate">{lead.business_name}</p>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {lead.converted && <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-green-600">Converted</Badge>}
+                        <Button variant="ghost" size="sm" onClick={() => handleDeleteLead(lead.id)} className="h-7 w-7 p-0 text-muted-foreground hover:text-red-600">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                      {lead.industry && <div><span className="text-muted-foreground">Industry:</span> {lead.industry}</div>}
+                      {lead.email && <div><span className="text-muted-foreground">Email:</span> {lead.email}</div>}
+                      {lead.whatsapp && <div><span className="text-muted-foreground">WhatsApp:</span> {lead.whatsapp}</div>}
+                      {lead.phone && <div><span className="text-muted-foreground">Phone:</span> {lead.phone}</div>}
+                    </div>
+                    {lead.notes && <p className="text-xs bg-muted/50 p-2 rounded-md">{lead.notes}</p>}
+                    <p className="text-[10px] text-muted-foreground">Added {format(new Date(lead.created_at), 'MMM dd, yyyy')}</p>
+                  </div>
+                ))}
+                {filteredLeads.length === 0 && (
+                  <p className="text-center text-sm text-muted-foreground py-8">
+                    {leadSearch ? 'No leads match your search.' : 'No leads yet. Click "Add Lead" to start tracking.'}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
+
+      {/* ── Add Lead Dialog ── */}
+      <Dialog open={showAddLeadDialog} onOpenChange={setShowAddLeadDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Lead</DialogTitle>
+            <DialogDescription>Track a potential customer</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="lead_name">Name *</Label>
+              <Input id="lead_name" value={newLeadData.name} onChange={e => setNewLeadData({ ...newLeadData, name: e.target.value })} placeholder="e.g. Thabo Mokoena" />
+            </div>
+            <div>
+              <Label htmlFor="lead_business">Business Name</Label>
+              <Input id="lead_business" value={newLeadData.business_name} onChange={e => setNewLeadData({ ...newLeadData, business_name: e.target.value })} placeholder="e.g. Mokoena IT Solutions" />
+            </div>
+            <div>
+              <Label htmlFor="lead_industry">Industry</Label>
+              <Select value={newLeadData.industry} onValueChange={v => setNewLeadData({ ...newLeadData, industry: v })}>
+                <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                <SelectContent>
+                  {INDUSTRY_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="lead_email">Email</Label>
+                <Input id="lead_email" type="email" value={newLeadData.email} onChange={e => setNewLeadData({ ...newLeadData, email: e.target.value })} placeholder="thabo@example.co.za" />
+              </div>
+              <div>
+                <Label htmlFor="lead_whatsapp">WhatsApp</Label>
+                <Input id="lead_whatsapp" type="tel" value={newLeadData.whatsapp} onChange={e => setNewLeadData({ ...newLeadData, whatsapp: e.target.value })} placeholder="071 234 5678" />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="lead_phone">Phone</Label>
+              <Input id="lead_phone" type="tel" value={newLeadData.phone} onChange={e => setNewLeadData({ ...newLeadData, phone: e.target.value })} placeholder="011 234 5678" />
+            </div>
+            <div>
+              <Label htmlFor="lead_notes">Notes</Label>
+              <Textarea id="lead_notes" value={newLeadData.notes} onChange={e => setNewLeadData({ ...newLeadData, notes: e.target.value })} placeholder="How did they hear about us? What do they need?" rows={3} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddLeadDialog(false)}>Cancel</Button>
+            <Button onClick={handleAddLead}>Add Lead</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showCreateUserDialog} onOpenChange={setShowCreateUserDialog}>
         <DialogContent>

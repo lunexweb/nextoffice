@@ -1,15 +1,17 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Users, 
   FileText, 
   Mail,
   Clock,
+  Timer,
   AlertTriangle,
   CheckCircle,
   Eye,
   Send,
   ChevronRight,
+  Bell,
 } from 'lucide-react';
 import { useDashboard, useCommunications, useBusinessProfile } from '@/hooks';
 import { emailService } from '@/services/emailService';
@@ -79,9 +81,16 @@ const formatRelativeTime = (timestamp: Date) => {
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const { stats, entries, alerts, activities, loading, error, sendTime, commLogs } = useDashboard();
+  const { stats, entries, alerts, activities, loading, error, sendTime, reminderRules, automationEnabled, commLogs } = useDashboard();
   const { analytics } = useCommunications();
   const { businessProfile } = useBusinessProfile();
+
+  // ── Live tick: re-render every 60s for countdown ──
+  const [_tick, setTick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 60_000);
+    return () => clearInterval(interval);
+  }, []);
 
   const safeEntries = Array.isArray(entries) ? entries : [];
   const overdueInvoices = safeEntries.filter((e: any) => e.status === 'overdue');
@@ -92,7 +101,7 @@ const DashboardPage: React.FC = () => {
   const totalDueSoon = dueSoonInvoices.reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0);
   const totalUpcoming = upcomingInvoices.reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0);
 
-  // Format sendTime ("09:00") to 12h display
+  // ── Helpers ──
   const formatTime12h = (time24: string) => {
     const [h, m] = time24.split(':').map(Number);
     const ampm = h >= 12 ? 'PM' : 'AM';
@@ -100,6 +109,29 @@ const DashboardPage: React.FC = () => {
     return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
   };
   const sendTimeDisplay = formatTime12h(sendTime);
+
+  // Build exact target datetime from a date + sendTime
+  const buildTargetDatetime = (dateStr: Date) => {
+    const [h, m] = sendTime.split(':').map(Number);
+    const target = new Date(dateStr);
+    target.setHours(h, m, 0, 0);
+    return target;
+  };
+
+  // Live countdown from now to a target datetime
+  const getCountdown = (target: Date) => {
+    const now = new Date();
+    const diff = target.getTime() - now.getTime();
+    if (diff <= 0) return { total: 0, days: 0, hours: 0, minutes: 0, display: 'Now', isPast: true };
+    const days = Math.floor(diff / 86400000);
+    const hours = Math.floor((diff % 86400000) / 3600000);
+    const minutes = Math.floor((diff % 3600000) / 60000);
+    let display = '';
+    if (days > 0) display += `${days}d `;
+    if (hours > 0 || days > 0) display += `${hours}h `;
+    display += `${minutes}m`;
+    return { total: diff, days, hours, minutes, display: display.trim(), isPast: false };
+  };
 
   // Check if a follow-up/reminder was already sent today for a given invoice
   const getLastFollowUpForInvoice = (invoiceId: string) => {
@@ -126,44 +158,116 @@ const DashboardPage: React.FC = () => {
     const sentToday = wasSentToday(invoiceId);
     const lastLog = getLastFollowUpForInvoice(invoiceId);
 
-    // Schedule: day 1 after due, then every 2 days (1, 3, 5, 7, 9, ...)
     const daysOverdue = Math.floor((now.getTime() - due.getTime()) / 86400000);
     if (daysOverdue < 1) {
       const followUpDate = new Date(due);
       followUpDate.setDate(followUpDate.getDate() + 1);
-      const daysUntil = Math.floor((followUpDate.getTime() - now.getTime()) / 86400000);
+      const targetDt = buildTargetDatetime(followUpDate);
+      const countdown = getCountdown(targetDt);
       return {
         date: followUpDate.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }),
         time: sendTimeDisplay,
-        daysUntil,
+        targetDt,
+        countdown,
         label: 'First follow-up',
         sentToday,
         lastSentAt: lastLog?.sentAt || null,
       };
     }
-    // Find the next follow-up day: 1, 3, 5, 7, 9, ...
     let nextStep = 1;
     while (nextStep < daysOverdue) {
       nextStep += 2;
     }
-    // If today is a follow-up day and it was already sent, advance to next
     if (nextStep === daysOverdue && sentToday) {
       nextStep += 2;
     }
     const followUpDate = new Date(due);
     followUpDate.setDate(followUpDate.getDate() + nextStep);
-    const daysUntil = Math.floor((followUpDate.getTime() - now.getTime()) / 86400000);
+    const targetDt = buildTargetDatetime(followUpDate);
+    const countdown = getCountdown(targetDt);
     const followUpNumber = Math.floor((nextStep - 1) / 2) + 1;
     const label = followUpNumber === 1 ? 'First follow-up' : `Follow-up #${followUpNumber}`;
     return {
       date: followUpDate.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }),
       time: sendTimeDisplay,
-      daysUntil,
+      targetDt,
+      countdown,
       label,
       sentToday,
       lastSentAt: lastLog?.sentAt || null,
     };
   };
+
+  // ── Build unified upcoming events (reminders + follow-ups) ──
+  const upcomingEvents = useMemo(() => {
+    const events: { type: 'reminder' | 'followup'; label: string; clientName: string; invoiceNumber: string; amount: number; targetDt: Date; countdown: ReturnType<typeof getCountdown>; sentToday: boolean }[] = [];
+
+    // Reminders for due-soon / upcoming invoices (before due date)
+    const reminderBeforeRules = reminderRules.filter((r: any) => r.enabled && r.triggerType === 'before');
+    const reminderDaysBefore = reminderBeforeRules.length > 0
+      ? reminderBeforeRules.map((r: any) => r.triggerDays as number)
+      : [3]; // default: 3 days before
+
+    for (const inv of [...dueSoonInvoices, ...upcomingInvoices]) {
+      const due = new Date(inv.dueDate);
+      due.setHours(0, 0, 0, 0);
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+
+      for (const daysBefore of reminderDaysBefore) {
+        const reminderDate = new Date(due);
+        reminderDate.setDate(reminderDate.getDate() - daysBefore);
+        const targetDt = buildTargetDatetime(reminderDate);
+        if (targetDt.getTime() > Date.now()) {
+          events.push({
+            type: 'reminder',
+            label: daysBefore === 0 ? 'Due date reminder' : `Reminder (${daysBefore}d before)`,
+            clientName: inv.client?.name || 'Unknown',
+            invoiceNumber: inv.documentNumber,
+            amount: inv.amount,
+            targetDt,
+            countdown: getCountdown(targetDt),
+            sentToday: wasSentToday(inv.id),
+          });
+        }
+      }
+
+      // Due-date reminder
+      const dueDateTarget = buildTargetDatetime(due);
+      if (dueDateTarget.getTime() > Date.now()) {
+        events.push({
+          type: 'reminder',
+          label: 'Due date reminder',
+          clientName: inv.client?.name || 'Unknown',
+          invoiceNumber: inv.documentNumber,
+          amount: inv.amount,
+          targetDt: dueDateTarget,
+          countdown: getCountdown(dueDateTarget),
+          sentToday: wasSentToday(inv.id),
+        });
+      }
+    }
+
+    // Follow-ups for overdue invoices
+    for (const inv of overdueInvoices) {
+      const followUp = getNextFollowUp(inv.dueDate, inv.id);
+      events.push({
+        type: 'followup',
+        label: followUp.label,
+        clientName: inv.client?.name || 'Unknown',
+        invoiceNumber: inv.documentNumber,
+        amount: inv.amount,
+        targetDt: followUp.targetDt,
+        countdown: followUp.countdown,
+        sentToday: followUp.sentToday,
+      });
+    }
+
+    // Sort by nearest first
+    events.sort((a, b) => a.targetDt.getTime() - b.targetDt.getTime());
+    return events;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entries, sendTime, reminderRules, commLogs, _tick]);
 
   // Auto-trigger follow-up emails for overdue invoices when due
   const autoFollowUpRan = useRef(false);
@@ -313,6 +417,92 @@ const DashboardPage: React.FC = () => {
         </div>
       </div>
 
+      {/* ── Live Command Center — upcoming reminders & follow-ups with countdowns ── */}
+      {upcomingEvents.length > 0 && (
+        <NOCard className="p-3 sm:p-6 border-l-4 border-l-primary">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold flex items-center gap-1.5 text-xs sm:text-base">
+              <Timer size={15} className="text-primary sm:w-[18px] sm:h-[18px]" />
+              <span>Live Automation</span>
+              <span className="relative flex h-2 w-2 ml-1">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+              </span>
+            </h3>
+            <span className="text-[10px] sm:text-xs text-muted-foreground">
+              {automationEnabled ? 'Active' : 'Paused'} · Sends at {sendTimeDisplay}
+            </span>
+          </div>
+          <div className="space-y-1.5">
+            {upcomingEvents.slice(0, 6).map((event, idx) => (
+              <div
+                key={`${event.invoiceNumber}-${event.type}-${idx}`}
+                className={`rounded-lg border overflow-hidden ${
+                  event.countdown.isPast
+                    ? 'bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800/30'
+                    : event.type === 'followup'
+                    ? 'bg-red-50/50 dark:bg-red-900/10 border-red-100 dark:border-red-900/20'
+                    : 'bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/20'
+                }`}
+              >
+                <div className="px-2.5 py-2 sm:px-3 flex items-center gap-2.5">
+                  {/* Icon */}
+                  <div className={`p-1.5 rounded-md flex-shrink-0 ${
+                    event.type === 'followup' ? 'bg-red-100 dark:bg-red-900/30' : 'bg-blue-100 dark:bg-blue-900/30'
+                  }`}>
+                    {event.type === 'followup' 
+                      ? <Send size={12} className="text-red-600" />
+                      : <Bell size={12} className="text-blue-600" />
+                    }
+                  </div>
+                  {/* Details */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-[11px] sm:text-xs truncate">{event.clientName}</span>
+                      <span className="text-[9px] sm:text-[10px] text-muted-foreground font-mono">{event.invoiceNumber}</span>
+                    </div>
+                    <div className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                      <span className={`font-medium ${event.type === 'followup' ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                        {event.label}
+                      </span>
+                      <span>· {event.targetDt.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })} at {formatTime12h(sendTime)}</span>
+                    </div>
+                  </div>
+                  {/* Countdown */}
+                  <div className="flex-shrink-0 text-right">
+                    {event.sentToday ? (
+                      <div className="flex items-center gap-1 text-green-600">
+                        <CheckCircle size={12} />
+                        <span className="text-[10px] font-bold">Sent</span>
+                      </div>
+                    ) : event.countdown.isPast ? (
+                      <span className="text-[10px] sm:text-xs font-bold text-amber-600 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full animate-pulse">
+                        Sending...
+                      </span>
+                    ) : (
+                      <div className="font-mono text-right">
+                        <div className="text-[13px] sm:text-sm font-bold tracking-tight leading-tight">
+                          {event.countdown.days > 0 && (
+                            <span className="text-muted-foreground">{event.countdown.days}<span className="text-[9px] font-medium">d</span> </span>
+                          )}
+                          <span>{String(event.countdown.hours).padStart(2, '0')}<span className="text-[9px] font-medium">h</span> </span>
+                          <span>{String(event.countdown.minutes).padStart(2, '0')}<span className="text-[9px] font-medium">m</span></span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {upcomingEvents.length > 6 && (
+            <p className="text-[10px] text-muted-foreground text-center mt-2">
+              +{upcomingEvents.length - 6} more scheduled
+            </p>
+          )}
+        </NOCard>
+      )}
+
       {/* Overdue Invoices — mobile optimised */}
       <NOCard className="p-3 sm:p-6">
         <div className="flex items-center justify-between mb-3">
@@ -387,26 +577,27 @@ const DashboardPage: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Next follow-up bar */}
+                  {/* Next follow-up bar with live countdown */}
                   <div className="px-2.5 py-1.5 sm:px-3 sm:py-2 bg-red-100/50 dark:bg-red-900/15 border-t border-red-100 dark:border-red-900/20 flex items-center justify-between">
                     <div className="flex items-center gap-1.5 text-[10px] sm:text-xs">
                       <Send size={10} className="text-amber-600 flex-shrink-0" />
                       <span className="font-medium">Next Follow Up</span>
                       <span className="text-muted-foreground hidden sm:inline">· {followUp.label}</span>
                     </div>
-                    {followUp.daysUntil === 0 ? (
-                      <span className="text-[10px] font-bold text-red-600 bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded-full animate-pulse">
-                        Today at {followUp.time}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[9px] sm:text-[10px] text-muted-foreground hidden sm:inline">
+                        {followUp.date} at {followUp.time}
                       </span>
-                    ) : followUp.daysUntil === 1 ? (
-                      <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full">
-                        {followUp.date} at {followUp.time} (tomorrow)
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-medium text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full">
-                        {followUp.date} at {followUp.time} (in {followUp.daysUntil} days)
-                      </span>
-                    )}
+                      {followUp.countdown.isPast ? (
+                        <span className="text-[10px] font-bold text-red-600 bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded-full animate-pulse">
+                          Sending now
+                        </span>
+                      ) : (
+                        <span className="text-[10px] sm:text-[11px] font-bold font-mono text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full">
+                          {followUp.countdown.display}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

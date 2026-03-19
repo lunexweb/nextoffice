@@ -39,6 +39,8 @@ export const useDashboard = () => {
   const [alerts, setAlerts] = useState<IntelligenceAlert[]>([]);
   const [activities, setActivities] = useState<RecentActivity[]>([]);
   const [sendTime, setSendTime] = useState('09:00');
+  const [reminderRules, setReminderRules] = useState<any[]>([]);
+  const [automationEnabled, setAutomationEnabled] = useState(true);
   const [commLogs, setCommLogs] = useState<any[]>([]);
 
   const load = async () => {
@@ -53,16 +55,18 @@ export const useDashboard = () => {
       const commLogs = commLogsData;
       setCommLogs(commLogsData);
 
-      // Fetch reminder settings for sendTime
+      // Fetch reminder settings (sendTime, rules, automation)
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           const { data: rs } = await supabase
             .from('reminder_settings')
-            .select('send_time')
+            .select('send_time, rules, automation_enabled')
             .eq('user_id', user.id)
             .maybeSingle();
           if (rs?.send_time) setSendTime(rs.send_time);
+          if (Array.isArray(rs?.rules) && rs.rules.length > 0) setReminderRules(rs.rules);
+          if (typeof rs?.automation_enabled === 'boolean') setAutomationEnabled(rs.automation_enabled);
         }
       } catch {}
 
@@ -205,5 +209,5 @@ export const useDashboard = () => {
     return () => { cleanup?.(); };
   }, []);
 
-  return { stats, entries, alerts, activities, loading, error, refetch: load, sendTime, commLogs };
+  return { stats, entries, alerts, activities, loading, error, refetch: load, sendTime, reminderRules, automationEnabled, commLogs };
 };

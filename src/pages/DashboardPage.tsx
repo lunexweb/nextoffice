@@ -476,10 +476,12 @@ const DashboardPage: React.FC = () => {
                         {event.label}
                       </span>
                       <span>· {event.targetDt.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })} at {formatTime12h(sendTime)}</span>
-                      {/* View count — always shown */}
-                      <span className={`inline-flex items-center gap-0.5 ${event.viewCount > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground/60'}`}>
-                        <Eye size={9} /> {event.viewCount} view{event.viewCount !== 1 ? 's' : ''}
-                      </span>
+                      {/* View count — only if something was sent before */}
+                      {event.lastSentAt && (
+                        <span className={`inline-flex items-center gap-0.5 ${event.viewCount > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground/60'}`}>
+                          <Eye size={9} /> {event.viewCount} view{event.viewCount !== 1 ? 's' : ''}
+                        </span>
+                      )}
                     </div>
                   </div>
                   {/* Countdown / Sent status */}
@@ -597,24 +599,26 @@ const DashboardPage: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Views indicator — always shown */}
-                  <div className={`px-2.5 py-1 sm:px-3 border-t flex items-center justify-between ${
-                    (invoice.engagement?.viewCount || 0) > 0
-                      ? 'bg-blue-50 dark:bg-blue-900/15 border-blue-100 dark:border-blue-900/20'
-                      : 'bg-muted/30 border-border'
-                  }`}>
-                    <div className={`flex items-center gap-1.5 text-[10px] sm:text-xs ${
-                      (invoice.engagement?.viewCount || 0) > 0 ? 'text-blue-700 dark:text-blue-400' : 'text-muted-foreground'
+                  {/* Views indicator — only if a reminder/follow-up was sent before */}
+                  {followUp.lastSentAt && (
+                    <div className={`px-2.5 py-1 sm:px-3 border-t flex items-center justify-between ${
+                      (invoice.engagement?.viewCount || 0) > 0
+                        ? 'bg-blue-50 dark:bg-blue-900/15 border-blue-100 dark:border-blue-900/20'
+                        : 'bg-muted/30 border-border'
                     }`}>
-                      <Eye size={10} className="flex-shrink-0" />
-                      <span className="font-medium">{invoice.engagement?.viewCount || 0} view{(invoice.engagement?.viewCount || 0) !== 1 ? 's' : ''}</span>
+                      <div className={`flex items-center gap-1.5 text-[10px] sm:text-xs ${
+                        (invoice.engagement?.viewCount || 0) > 0 ? 'text-blue-700 dark:text-blue-400' : 'text-muted-foreground'
+                      }`}>
+                        <Eye size={10} className="flex-shrink-0" />
+                        <span className="font-medium">{invoice.engagement?.viewCount || 0} view{(invoice.engagement?.viewCount || 0) !== 1 ? 's' : ''}</span>
+                      </div>
+                      {(invoice.engagement?.viewCount || 0) > 0 && invoice.engagement?.lastViewedAt && (
+                        <span className="text-[10px] text-blue-600 dark:text-blue-400">
+                          last {new Date(invoice.engagement.lastViewedAt).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })} {new Date(invoice.engagement.lastViewedAt).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
                     </div>
-                    {(invoice.engagement?.viewCount || 0) > 0 && invoice.engagement?.lastViewedAt && (
-                      <span className="text-[10px] text-blue-600 dark:text-blue-400">
-                        last {new Date(invoice.engagement.lastViewedAt).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })} {new Date(invoice.engagement.lastViewedAt).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    )}
-                  </div>
+                  )}
 
                   {/* Next follow-up bar with live countdown */}
                   <div className="px-2.5 py-1.5 sm:px-3 sm:py-2 bg-red-100/50 dark:bg-red-900/15 border-t border-red-100 dark:border-red-900/20 flex items-center justify-between">

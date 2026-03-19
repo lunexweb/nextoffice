@@ -5,11 +5,13 @@ import { NegotiationOptions } from '@/types';
 interface InvoiceNegotiationOptionsProps {
   options: NegotiationOptions;
   onChange: (options: NegotiationOptions) => void;
+  dueDate?: string;
 }
 
 export const InvoiceNegotiationOptions: React.FC<InvoiceNegotiationOptionsProps> = ({
   options,
   onChange,
+  dueDate,
 }) => {
   const updateOption = <K extends keyof NegotiationOptions>(
     key: K,
@@ -222,11 +224,17 @@ export const InvoiceNegotiationOptions: React.FC<InvoiceNegotiationOptionsProps>
           <label className="text-sm font-semibold">Final Deadline</label>
           <p className="text-xs text-muted-foreground mb-2">
             Absolute last date - no extensions beyond this
+            {dueDate && <span className="text-amber-600 font-medium"> (must be on or after due date)</span>}
           </p>
           <input
             type="date"
             value={options.final_deadline}
-            onChange={(e) => updateOption('final_deadline', e.target.value)}
+            min={dueDate || undefined}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (dueDate && val && val < dueDate) return;
+              updateOption('final_deadline', val);
+            }}
             className="w-full max-w-xs p-2 rounded-md border border-border bg-no-surface-raised outline-none focus:ring-2 focus:ring-primary text-sm"
           />
         </div>

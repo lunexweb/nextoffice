@@ -24,6 +24,8 @@ const mapInvoice = (row: any): Invoice => ({
   vatAmount: parseFloat(row.vat_amount) || 0,
   negotiationOptions: row.negotiation_options || undefined,
   amountPaid: parseFloat(row.amount_paid) || 0,
+  customField1: row.custom_field_1 || undefined,
+  customField2: row.custom_field_2 || undefined,
 });
 
 export const invoiceService = {
@@ -103,6 +105,8 @@ export const invoiceService = {
         vat_enabled: vatEnabled,
         vat_percentage: vatPct,
         vat_amount: vatAmount,
+        custom_field_1: formData.customField1 || null,
+        custom_field_2: formData.customField2 || null,
       }])
       .select('*')
       .single();
@@ -153,6 +157,8 @@ export const invoiceService = {
         vat_enabled: vatEnabled,
         vat_percentage: vatPct,
         vat_amount: vatAmount,
+        custom_field_1: formData.customField1 || null,
+        custom_field_2: formData.customField2 || null,
       })
       .eq('id', id)
       .select(INV_SELECT)

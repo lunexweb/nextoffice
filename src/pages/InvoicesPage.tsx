@@ -61,7 +61,7 @@ const InvoicesPage: React.FC = () => {
   const [vatPercentage, setVatPercentage] = useState(15);
   const [vatInitialized, setVatInitialized] = useState(false);
 
-  const { invoices, loading, error, createInvoice, updateInvoice, deleteInvoice, updateInvoiceStatus } = useInvoices();
+  const { invoices, loading, createInvoice, updateInvoice, deleteInvoice, updateInvoiceStatus } = useInvoices();
   const { clients, loading: clientsLoading } = useClients();
   const { generating, downloadInvoicePDF, previewInvoicePDF } = usePDF();
   const { businessProfile } = useBusinessProfile();
@@ -79,6 +79,7 @@ const InvoicesPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const handleEditRecurring = (inv: typeof invoices[0]) => {
+    setEditingInvoiceId(null);
     setFormData({
       clientId: inv.clientId,
       lineItems: inv.lineItems.length > 0 ? [...inv.lineItems] : [{ description: '', quantity: 1, rate: 0 }],
@@ -114,6 +115,8 @@ const InvoicesPage: React.FC = () => {
       notes: '',
       isRecurring: inv.isRecurring || false,
       recurringDay: inv.recurringDay || 1,
+      customField1: inv.customField1 || '',
+      customField2: inv.customField2 || '',
     });
     setVatEnabled(inv.vatEnabled || false);
     setVatPercentage(inv.vatPercentage || 15);
@@ -129,7 +132,7 @@ const InvoicesPage: React.FC = () => {
     }
     setIsSaving(true);
     try {
-      const updated = await updateInvoice(editingInvoiceId, { ...formData, negotiationOptions, vatEnabled, vatPercentage });
+      const updated = await updateInvoice(editingInvoiceId, { ...formData, negotiationOptions, vatEnabled, vatPercentage, customField1: formData.customField1, customField2: formData.customField2 });
       if (updated) {
         setEditingInvoiceId(null);
         setView('list');
@@ -166,6 +169,10 @@ const InvoicesPage: React.FC = () => {
       setErrorModal({ show: true, message: 'Please select a client' });
       return;
     }
+    if (!formData.dueDate) {
+      setErrorModal({ show: true, message: 'Please set a due date' });
+      return;
+    }
     if (!formData.lineItems.some(i => i.description && i.rate > 0)) {
       setErrorModal({ show: true, message: 'Please add at least one line item with a description and amount' });
       return;
@@ -174,6 +181,10 @@ const InvoicesPage: React.FC = () => {
     setIsSaving(true);
     try {
       const newInvoice = await createInvoice({ ...formData, negotiationOptions, vatEnabled, vatPercentage });
+      if (!newInvoice) {
+        setErrorModal({ show: true, message: 'Failed to create invoice. Please check your details and try again.' });
+        return;
+      }
       if (newInvoice) {
         setCreatedInvoiceNumber(newInvoice.number);
         setCreatedInvoiceId(newInvoice.id);
@@ -397,17 +408,6 @@ const InvoicesPage: React.FC = () => {
     );
   }
 
-  if (error) {
-    return (
-      <div className="p-8 flex items-center justify-center">
-        <div className="text-red-500 text-center">
-          <p className="font-medium">Error loading invoices</p>
-          <p className="text-sm text-muted-foreground">{error}</p>
-        </div>
-      </div>
-    );
-  }
-
   if (view === 'create') {
     if (sent) {
       const clientName = clients.find(c => c.id === formData.clientId)?.name || 'the client';
@@ -609,6 +609,28 @@ const InvoicesPage: React.FC = () => {
                   <span className="text-sm">Monthly recurring invoice</span>
                 </div>
               </div>
+              <div>
+                <label className="text-xs font-bold text-muted-foreground uppercase">Custom Field 1 <span className="normal-case text-muted-foreground/60">(optional)</span></label>
+                <input
+                  type="text"
+                  maxLength={30}
+                  value={formData.customField1 || ''}
+                  onChange={e => setFormData({ ...formData, customField1: e.target.value })}
+                  placeholder="e.g. Project name, PO number…"
+                  className="w-full p-3 rounded-md border border-border bg-no-surface-raised mt-1 outline-none focus:ring-2 focus:ring-primary text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-muted-foreground uppercase">Custom Field 2 <span className="normal-case text-muted-foreground/60">(optional)</span></label>
+                <input
+                  type="text"
+                  maxLength={30}
+                  value={formData.customField2 || ''}
+                  onChange={e => setFormData({ ...formData, customField2: e.target.value })}
+                  placeholder="e.g. Reference, Contract no…"
+                  className="w-full p-3 rounded-md border border-border bg-no-surface-raised mt-1 outline-none focus:ring-2 focus:ring-primary text-sm"
+                />
+              </div>
             </div>
           </NOCard>
 
@@ -739,6 +761,7 @@ const InvoicesPage: React.FC = () => {
           <InvoiceNegotiationOptions
             options={negotiationOptions}
             onChange={setNegotiationOptions}
+            dueDate={formData.dueDate || undefined}
           />
 
           {(negotiationOptions.allow_deposit || negotiationOptions.allow_payment_plans || negotiationOptions.allow_extensions) && (
@@ -816,10 +839,12 @@ const InvoicesPage: React.FC = () => {
                   </div>
 
                   {/* Invoice Details */}
-                  <div className="flex justify-between items-start mb-4">
+                  <div className="flex justify-between items-start mb-2">
                     <div>
                       <p className="text-[10px] font-bold text-[#52606D] uppercase">Invoice</p>
                       <p className="font-mono text-sm">#{nextInvoiceNumber}</p>
+                      {formData.customField1 && <p className="text-[10px] text-[#52606D] mt-0.5">{formData.customField1}</p>}
+                      {formData.customField2 && <p className="text-[10px] text-[#52606D]">{formData.customField2}</p>}
                     </div>
                     <p className="font-mono text-xl font-bold text-[#C49A2A]">R{total.toLocaleString()}</p>
                   </div>
@@ -1043,7 +1068,7 @@ const InvoicesPage: React.FC = () => {
             const getPDFData = () => {
               const client = clients.find(c => c.id === inv.clientId);
               const lineSub = inv.lineItems?.length > 0 ? inv.lineItems.reduce((s, li) => s + li.quantity * li.rate, 0) : inv.amount;
-              return { invoiceNumber: inv.number, invoiceDate: formatDate(inv.createdAt || new Date().toISOString()), dueDate: formatDate(inv.dueDate), status: inv.status, businessName: businessProfile?.businessName || '', businessEmail: businessProfile?.email || '', businessAddress: [businessProfile?.address, businessProfile?.city].filter(Boolean).join(', '), businessPhone: businessProfile?.phone || '', clientName: inv.clientName, clientEmail: client?.email, clientAddress: client?.address, items: inv.lineItems?.length > 0 ? inv.lineItems.map(item => ({ description: item.description, quantity: item.quantity, rate: item.rate, amount: item.quantity * item.rate })) : [{ description: 'Service', quantity: 1, rate: lineSub, amount: lineSub }], subtotal: lineSub, tax: inv.vatEnabled ? inv.vatAmount : undefined, taxRate: inv.vatEnabled ? inv.vatPercentage : undefined, total: inv.amount, amountPaid: inv.status === 'paid' ? inv.amount : 0, balance: inv.status === 'paid' ? 0 : inv.amount };
+              return { invoiceNumber: inv.number, invoiceDate: formatDate(inv.createdAt || new Date().toISOString()), dueDate: formatDate(inv.dueDate), status: inv.status, businessName: businessProfile?.businessName || '', businessEmail: businessProfile?.email || '', businessAddress: [businessProfile?.address, businessProfile?.city].filter(Boolean).join(', '), businessPhone: businessProfile?.phone || '', vatNumber: businessProfile?.vatSettings?.registrationNumber || undefined, clientName: inv.clientName, clientEmail: client?.email, clientAddress: client?.address, items: inv.lineItems?.length > 0 ? inv.lineItems.map(item => ({ description: item.description, quantity: item.quantity, rate: item.rate, amount: item.quantity * item.rate })) : [{ description: 'Service', quantity: 1, rate: lineSub, amount: lineSub }], subtotal: lineSub, tax: inv.vatEnabled ? inv.vatAmount : undefined, taxRate: inv.vatEnabled ? inv.vatPercentage : undefined, total: inv.amount, amountPaid: inv.amountPaid > 0 ? inv.amountPaid : undefined, balance: inv.amountPaid > 0 ? inv.amount - inv.amountPaid : undefined, bankingDetails: businessProfile?.bankingDetails?.bank ? { bank: businessProfile.bankingDetails.bank, account: businessProfile.bankingDetails.account, branch: businessProfile.bankingDetails.branch, type: businessProfile.bankingDetails.type, reference: inv.number } : undefined, customField1: inv.customField1, customField2: inv.customField2 };
             };
 
             return (
@@ -1178,8 +1203,12 @@ const InvoicesPage: React.FC = () => {
                 tax: inv.vatEnabled ? inv.vatAmount : undefined,
                 taxRate: inv.vatEnabled ? inv.vatPercentage : undefined,
                 total: inv.amount,
-                amountPaid: inv.status === 'paid' ? inv.amount : 0,
-                balance: inv.status === 'paid' ? 0 : inv.amount,
+                amountPaid: inv.amountPaid > 0 ? inv.amountPaid : undefined,
+                balance: inv.amountPaid > 0 ? inv.amount - inv.amountPaid : undefined,
+                vatNumber: businessProfile?.vatSettings?.registrationNumber || undefined,
+                bankingDetails: businessProfile?.bankingDetails?.bank ? { bank: businessProfile.bankingDetails.bank, account: businessProfile.bankingDetails.account, branch: businessProfile.bankingDetails.branch, type: businessProfile.bankingDetails.type, reference: inv.number } : undefined,
+                customField1: inv.customField1,
+                customField2: inv.customField2,
               };
             };
 

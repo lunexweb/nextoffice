@@ -52,6 +52,8 @@ export interface Invoice {
   negotiationOptions?: NegotiationOptions;
   amountPaid: number;
   payments?: Payment[];
+  customField1?: string;
+  customField2?: string;
 }
 
 export type PaymentType = 'deposit' | 'balance' | 'full' | 'partial';
@@ -148,6 +150,8 @@ export interface InvoiceFormData {
   negotiationOptions?: NegotiationOptions;
   vatEnabled?: boolean;
   vatPercentage?: number;
+  customField1?: string;
+  customField2?: string;
 }
 
 export interface NegotiationOptions {

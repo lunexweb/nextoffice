@@ -8,4 +8,4 @@ export const API_CONFIG = {
 
 export const isProduction = () => import.meta.env.PROD;
 export const isDevelopment = () => import.meta.env.DEV;
-export const useMockData = () => API_CONFIG.USE_MOCK_DATA || isDevelopment();
+export const useMockData = () => API_CONFIG.USE_MOCK_DATA;

@@ -199,8 +199,9 @@ const DashboardPage: React.FC = () => {
   };
 
   // ── Build unified upcoming events (reminders + follow-ups) ──
+  const [showAllEvents, setShowAllEvents] = useState(false);
   const upcomingEvents = useMemo(() => {
-    const events: { type: 'reminder' | 'followup'; label: string; clientName: string; invoiceNumber: string; amount: number; targetDt: Date; countdown: ReturnType<typeof getCountdown>; sentToday: boolean }[] = [];
+    const events: { type: 'reminder' | 'followup'; label: string; clientName: string; invoiceNumber: string; amount: number; targetDt: Date; countdown: ReturnType<typeof getCountdown>; sentToday: boolean; lastSentAt: string | null; viewCount: number; lastViewedAt: string | null }[] = [];
 
     // Reminders for due-soon / upcoming invoices (before due date)
     const reminderBeforeRules = reminderRules.filter((r: any) => r.enabled && r.triggerType === 'before');
@@ -211,14 +212,13 @@ const DashboardPage: React.FC = () => {
     for (const inv of [...dueSoonInvoices, ...upcomingInvoices]) {
       const due = new Date(inv.dueDate);
       due.setHours(0, 0, 0, 0);
-      const now = new Date();
-      now.setHours(0, 0, 0, 0);
 
       for (const daysBefore of reminderDaysBefore) {
         const reminderDate = new Date(due);
         reminderDate.setDate(reminderDate.getDate() - daysBefore);
         const targetDt = buildTargetDatetime(reminderDate);
         if (targetDt.getTime() > Date.now()) {
+          const lastLog = getLastFollowUpForInvoice(inv.id);
           events.push({
             type: 'reminder',
             label: daysBefore === 0 ? 'Due date reminder' : `Reminder (${daysBefore}d before)`,
@@ -228,6 +228,9 @@ const DashboardPage: React.FC = () => {
             targetDt,
             countdown: getCountdown(targetDt),
             sentToday: wasSentToday(inv.id),
+            lastSentAt: lastLog?.sentAt || null,
+            viewCount: inv.engagement?.viewCount || 0,
+            lastViewedAt: inv.engagement?.lastViewedAt || null,
           });
         }
       }
@@ -235,6 +238,7 @@ const DashboardPage: React.FC = () => {
       // Due-date reminder
       const dueDateTarget = buildTargetDatetime(due);
       if (dueDateTarget.getTime() > Date.now()) {
+        const lastLog = getLastFollowUpForInvoice(inv.id);
         events.push({
           type: 'reminder',
           label: 'Due date reminder',
@@ -244,6 +248,9 @@ const DashboardPage: React.FC = () => {
           targetDt: dueDateTarget,
           countdown: getCountdown(dueDateTarget),
           sentToday: wasSentToday(inv.id),
+          lastSentAt: lastLog?.sentAt || null,
+          viewCount: inv.engagement?.viewCount || 0,
+          lastViewedAt: inv.engagement?.lastViewedAt || null,
         });
       }
     }
@@ -260,6 +267,9 @@ const DashboardPage: React.FC = () => {
         targetDt: followUp.targetDt,
         countdown: followUp.countdown,
         sentToday: followUp.sentToday,
+        lastSentAt: followUp.lastSentAt,
+        viewCount: inv.engagement?.viewCount || 0,
+        lastViewedAt: inv.engagement?.lastViewedAt || null,
       });
     }
 
@@ -434,7 +444,7 @@ const DashboardPage: React.FC = () => {
             </span>
           </div>
           <div className="space-y-1.5">
-            {upcomingEvents.slice(0, 6).map((event, idx) => (
+            {upcomingEvents.slice(0, showAllEvents ? undefined : 10).map((event, idx) => (
               <div
                 key={`${event.invoiceNumber}-${event.type}-${idx}`}
                 className={`rounded-lg border overflow-hidden ${
@@ -461,19 +471,41 @@ const DashboardPage: React.FC = () => {
                       <span className="font-semibold text-[11px] sm:text-xs truncate">{event.clientName}</span>
                       <span className="text-[9px] sm:text-[10px] text-muted-foreground font-mono">{event.invoiceNumber}</span>
                     </div>
-                    <div className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                    <div className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
                       <span className={`font-medium ${event.type === 'followup' ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
                         {event.label}
                       </span>
                       <span>· {event.targetDt.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })} at {formatTime12h(sendTime)}</span>
+                      {/* Viewed indicator inline */}
+                      {event.viewCount > 0 ? (
+                        <span className="inline-flex items-center gap-0.5 text-blue-600 dark:text-blue-400">
+                          <Eye size={9} /> Viewed {event.viewCount}×
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground/60">· Not viewed</span>
+                      )}
                     </div>
                   </div>
-                  {/* Countdown */}
+                  {/* Countdown / Sent status */}
                   <div className="flex-shrink-0 text-right">
                     {event.sentToday ? (
-                      <div className="flex items-center gap-1 text-green-600">
-                        <CheckCircle size={12} />
-                        <span className="text-[10px] font-bold">Sent</span>
+                      <div className="text-right">
+                        <div className="flex items-center gap-1 text-green-600 justify-end">
+                          <CheckCircle size={11} />
+                          <span className="text-[10px] font-bold">Sent</span>
+                        </div>
+                        {event.lastSentAt && (
+                          <p className="text-[9px] text-green-600/80 mt-0.5">
+                            {new Date(event.lastSentAt).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })} {new Date(event.lastSentAt).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        )}
+                        {event.viewCount > 0 ? (
+                          <p className="text-[9px] text-blue-600 font-medium mt-0.5 flex items-center gap-0.5 justify-end">
+                            <Eye size={8} /> Opened
+                          </p>
+                        ) : (
+                          <p className="text-[9px] text-muted-foreground mt-0.5">Not opened</p>
+                        )}
                       </div>
                     ) : event.countdown.isPast ? (
                       <span className="text-[10px] sm:text-xs font-bold text-amber-600 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full animate-pulse">
@@ -495,10 +527,21 @@ const DashboardPage: React.FC = () => {
               </div>
             ))}
           </div>
-          {upcomingEvents.length > 6 && (
-            <p className="text-[10px] text-muted-foreground text-center mt-2">
-              +{upcomingEvents.length - 6} more scheduled
-            </p>
+          {upcomingEvents.length > 10 && !showAllEvents && (
+            <button
+              onClick={() => setShowAllEvents(true)}
+              className="w-full mt-2 py-1.5 text-[11px] sm:text-xs font-medium text-primary hover:text-primary/80 flex items-center justify-center gap-1 transition-colors"
+            >
+              View all {upcomingEvents.length} scheduled <ChevronRight size={12} />
+            </button>
+          )}
+          {showAllEvents && upcomingEvents.length > 10 && (
+            <button
+              onClick={() => setShowAllEvents(false)}
+              className="w-full mt-2 py-1.5 text-[11px] sm:text-xs font-medium text-muted-foreground hover:text-foreground flex items-center justify-center gap-1 transition-colors"
+            >
+              Show less
+            </button>
           )}
         </NOCard>
       )}

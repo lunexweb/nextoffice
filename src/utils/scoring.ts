@@ -97,7 +97,15 @@ export function computeClientScore(
         }
         // Unresolved commitment on overdue: wait and see
       }
-      // Overdue with no commitment: neutral — they may still pay
+
+      // Viewed but not paid: score keeps dropping the longer it goes
+      if (inv.viewCount > 0) {
+        const daysOverdue = Math.floor((now.getTime() - dueDate.getTime()) / 86400000);
+        // -2 per view after first, plus -1 per 3 days overdue while viewed
+        const viewPenalty = Math.max(0, (inv.viewCount - 1)) * 2;
+        const timePenalty = Math.floor(daysOverdue / 3);
+        score -= Math.min(viewPenalty + timePenalty, 15); // cap at -15 for viewed-but-unpaid
+      }
     }
     // 'sent' invoices: no impact yet
   }

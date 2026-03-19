@@ -103,6 +103,7 @@ export default function CEODashboardPage() {
     full_name: '',
     password: '',
     billing_cycle_days: 30,
+    role: 'user' as 'user' | 'admin',
   });
 
   const [approvalData, setApprovalData] = useState({
@@ -201,12 +202,20 @@ export default function CEODashboardPage() {
         });
       }
 
+      // Set role if admin was selected (CEO session is now restored, has RLS access)
+      if (data.user && newUserData.role === 'admin') {
+        await supabase
+          .from('user_roles')
+          .update({ role: 'admin' })
+          .eq('user_id', data.user.id);
+      }
+
       toast({
         title: 'User created',
-        description: `${newUserData.email} added successfully. Use Manage to activate their subscription.`,
+        description: `${newUserData.email} added as ${newUserData.role === 'admin' ? 'an Admin' : 'a User'}. Use Manage to activate their subscription.`,
       });
       setShowCreateUserDialog(false);
-      setNewUserData({ email: '', full_name: '', password: '', billing_cycle_days: 30 });
+      setNewUserData({ email: '', full_name: '', password: '', billing_cycle_days: 30, role: 'user' });
       await loadData();
     } catch (err: any) {
       toast({
@@ -401,6 +410,7 @@ export default function CEODashboardPage() {
                 full_name: lead.name,
                 password: '',
                 billing_cycle_days: 30,
+                role: 'user',
               });
               setShowCreateUserDialog(true);
             }}
@@ -1000,6 +1010,34 @@ export default function CEODashboardPage() {
                 placeholder="Enter temporary password"
               />
               <p className="text-xs text-muted-foreground mt-1">User can change this after first login</p>
+            </div>
+            <div>
+              <Label>Role</Label>
+              <div className="flex gap-2 mt-1.5">
+                <Button
+                  type="button"
+                  variant={newUserData.role === 'user' ? 'default' : 'outline'}
+                  size="sm"
+                  className="flex-1 text-xs"
+                  onClick={() => setNewUserData({ ...newUserData, role: 'user' })}
+                >
+                  <Users className="h-3.5 w-3.5 mr-1" />
+                  User
+                </Button>
+                <Button
+                  type="button"
+                  variant={newUserData.role === 'admin' ? 'default' : 'outline'}
+                  size="sm"
+                  className="flex-1 text-xs"
+                  onClick={() => setNewUserData({ ...newUserData, role: 'admin' })}
+                >
+                  <ShieldCheck className="h-3.5 w-3.5 mr-1" />
+                  Admin
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {newUserData.role === 'admin' ? 'Admin can access the CEO Dashboard' : 'Regular user with standard access'}
+              </p>
             </div>
           </div>
           <DialogFooter>

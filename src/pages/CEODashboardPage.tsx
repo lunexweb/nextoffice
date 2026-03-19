@@ -29,6 +29,45 @@ interface Lead {
 
 const INDUSTRY_OPTIONS = ['Web/Creative', 'IT Support', 'Consulting', 'Security', 'Construction', 'Accounting', 'Cleaning', 'Recruitment', 'Other'];
 
+function IndustryInlineEditor({ current, onSave, onCancel }: { current: string; onSave: (v: string) => void; onCancel: () => void; }) {
+  const isCustom = current !== '' && !INDUSTRY_OPTIONS.slice(0, -1).includes(current);
+  const [selected, setSelected] = useState(isCustom ? 'Other' : current);
+  const [custom, setCustom] = useState(isCustom ? current : '');
+
+  const commit = (sel: string, cust: string) => {
+    const val = sel === 'Other' ? (cust.trim() || 'Other') : sel;
+    onSave(val);
+  };
+
+  return (
+    <div className="flex flex-col gap-1 min-w-[130px]">
+      <select
+        autoFocus
+        value={selected}
+        onChange={e => { setSelected(e.target.value); if (e.target.value !== 'Other') commit(e.target.value, ''); }}
+        onBlur={() => { if (selected !== 'Other') onCancel(); }}
+        onKeyDown={e => { if (e.key === 'Escape') onCancel(); }}
+        className="w-full px-1.5 py-1 text-xs border rounded bg-background outline-none focus:ring-1 focus:ring-primary"
+      >
+        <option value="">—</option>
+        {INDUSTRY_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+      </select>
+      {selected === 'Other' && (
+        <input
+          autoFocus
+          type="text"
+          value={custom}
+          onChange={e => setCustom(e.target.value)}
+          onBlur={() => commit(selected, custom)}
+          onKeyDown={e => { if (e.key === 'Enter') commit(selected, custom); if (e.key === 'Escape') onCancel(); }}
+          placeholder="Type industry..."
+          className="w-full px-1.5 py-1 text-xs border rounded bg-background outline-none focus:ring-1 focus:ring-primary"
+        />
+      )}
+    </div>
+  );
+}
+
 export default function CEODashboardPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [accessRequests, setAccessRequests] = useState<any[]>([]);
@@ -51,7 +90,7 @@ export default function CEODashboardPage() {
   const [leadFilter, setLeadFilter] = useState<'all' | 'converted' | 'open'>('all');
   const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
   const [newLeadData, setNewLeadData] = useState({
-    name: '', business_name: '', industry: '', email: '', whatsapp: '', phone: '', notes: '',
+    name: '', business_name: '', industry: '', customIndustry: '', email: '', whatsapp: '', phone: '', notes: '', converted: false,
   });
 
   const handleSignOut = async () => {
@@ -291,20 +330,24 @@ export default function CEODashboardPage() {
       toast({ title: 'Error', description: 'Name is required', variant: 'destructive' });
       return;
     }
+    const industryValue = newLeadData.industry === 'Other'
+      ? (newLeadData.customIndustry.trim() || 'Other')
+      : (newLeadData.industry || null);
     try {
       const { error } = await supabase.from('leads').insert([{
         name: newLeadData.name.trim(),
         business_name: newLeadData.business_name.trim() || null,
-        industry: newLeadData.industry || null,
+        industry: industryValue,
         email: newLeadData.email.trim() || null,
         whatsapp: newLeadData.whatsapp.trim() || null,
         phone: newLeadData.phone.trim() || null,
         notes: newLeadData.notes.trim() || null,
+        converted: newLeadData.converted,
       }]);
       if (error) throw error;
       toast({ title: 'Lead added' });
       setShowAddLeadDialog(false);
-      setNewLeadData({ name: '', business_name: '', industry: '', email: '', whatsapp: '', phone: '', notes: '' });
+      setNewLeadData({ name: '', business_name: '', industry: '', customIndustry: '', email: '', whatsapp: '', phone: '', notes: '', converted: false });
       await loadData();
     } catch (err: any) {
       toast({ title: 'Error', description: err.message || 'Failed to add lead', variant: 'destructive' });
@@ -716,16 +759,11 @@ export default function CEODashboardPage() {
                           <td key={field} className="px-3 py-1">
                             {editingCell?.id === lead.id && editingCell.field === field ? (
                               field === 'industry' ? (
-                                <select
-                                  autoFocus
-                                  value={(lead[field] as string) || ''}
-                                  onChange={e => { handleUpdateLead(lead.id, field, e.target.value); setEditingCell(null); }}
-                                  onBlur={() => setEditingCell(null)}
-                                  className="w-full px-1.5 py-1 text-xs border rounded bg-background outline-none focus:ring-1 focus:ring-primary"
-                                >
-                                  <option value="">—</option>
-                                  {INDUSTRY_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                                </select>
+                                <IndustryInlineEditor
+                                  current={(lead[field] as string) || ''}
+                                  onSave={v => { handleUpdateLead(lead.id, field, v); setEditingCell(null); }}
+                                  onCancel={() => setEditingCell(null)}
+                                />
                               ) : field === 'notes' ? (
                                 <textarea
                                   autoFocus
@@ -821,51 +859,72 @@ export default function CEODashboardPage() {
 
       {/* ── Add Lead Dialog ── */}
       <Dialog open={showAddLeadDialog} onOpenChange={setShowAddLeadDialog}>
-        <DialogContent>
-          <DialogHeader>
+        <DialogContent className="max-w-md">
+          <DialogHeader className="pb-1">
             <DialogTitle>Add New Lead</DialogTitle>
             <DialogDescription>Track a potential customer</DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label htmlFor="lead_name">Name *</Label>
-              <Input id="lead_name" value={newLeadData.name} onChange={e => setNewLeadData({ ...newLeadData, name: e.target.value })} placeholder="e.g. Thabo Mokoena" />
+          <div className="space-y-2.5">
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="col-span-2 sm:col-span-1">
+                <Label htmlFor="lead_name" className="text-xs">Name *</Label>
+                <Input id="lead_name" value={newLeadData.name} onChange={e => setNewLeadData({ ...newLeadData, name: e.target.value })} placeholder="e.g. Thabo Mokoena" className="h-8 text-sm" />
+              </div>
+              <div className="col-span-2 sm:col-span-1">
+                <Label htmlFor="lead_business" className="text-xs">Business Name</Label>
+                <Input id="lead_business" value={newLeadData.business_name} onChange={e => setNewLeadData({ ...newLeadData, business_name: e.target.value })} placeholder="e.g. Mokoena IT" className="h-8 text-sm" />
+              </div>
             </div>
             <div>
-              <Label htmlFor="lead_business">Business Name</Label>
-              <Input id="lead_business" value={newLeadData.business_name} onChange={e => setNewLeadData({ ...newLeadData, business_name: e.target.value })} placeholder="e.g. Mokoena IT Solutions" />
-            </div>
-            <div>
-              <Label htmlFor="lead_industry">Industry</Label>
-              <Select value={newLeadData.industry} onValueChange={v => setNewLeadData({ ...newLeadData, industry: v })}>
-                <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+              <Label htmlFor="lead_industry" className="text-xs">Industry</Label>
+              <Select value={newLeadData.industry} onValueChange={v => setNewLeadData({ ...newLeadData, industry: v, customIndustry: '' })}>
+                <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Select..." /></SelectTrigger>
                 <SelectContent>
                   {INDUSTRY_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {newLeadData.industry === 'Other' && (
+                <Input
+                  className="mt-1.5 h-8 text-sm"
+                  placeholder="Type your industry..."
+                  value={newLeadData.customIndustry}
+                  onChange={e => setNewLeadData({ ...newLeadData, customIndustry: e.target.value })}
+                  autoFocus
+                />
+              )}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2.5">
               <div>
-                <Label htmlFor="lead_email">Email</Label>
-                <Input id="lead_email" type="email" value={newLeadData.email} onChange={e => setNewLeadData({ ...newLeadData, email: e.target.value })} placeholder="thabo@example.co.za" />
+                <Label htmlFor="lead_email" className="text-xs">Email</Label>
+                <Input id="lead_email" type="email" value={newLeadData.email} onChange={e => setNewLeadData({ ...newLeadData, email: e.target.value })} placeholder="thabo@example.co.za" className="h-8 text-sm" />
               </div>
               <div>
-                <Label htmlFor="lead_whatsapp">WhatsApp</Label>
-                <Input id="lead_whatsapp" type="tel" value={newLeadData.whatsapp} onChange={e => setNewLeadData({ ...newLeadData, whatsapp: e.target.value })} placeholder="071 234 5678" />
+                <Label htmlFor="lead_whatsapp" className="text-xs">WhatsApp</Label>
+                <Input id="lead_whatsapp" type="tel" value={newLeadData.whatsapp} onChange={e => setNewLeadData({ ...newLeadData, whatsapp: e.target.value })} placeholder="071 234 5678" className="h-8 text-sm" />
               </div>
             </div>
             <div>
-              <Label htmlFor="lead_phone">Phone</Label>
-              <Input id="lead_phone" type="tel" value={newLeadData.phone} onChange={e => setNewLeadData({ ...newLeadData, phone: e.target.value })} placeholder="011 234 5678" />
+              <Label htmlFor="lead_phone" className="text-xs">Phone</Label>
+              <Input id="lead_phone" type="tel" value={newLeadData.phone} onChange={e => setNewLeadData({ ...newLeadData, phone: e.target.value })} placeholder="011 234 5678" className="h-8 text-sm" />
             </div>
             <div>
-              <Label htmlFor="lead_notes">Notes</Label>
-              <Textarea id="lead_notes" value={newLeadData.notes} onChange={e => setNewLeadData({ ...newLeadData, notes: e.target.value })} placeholder="How did they hear about us? What do they need?" rows={3} />
+              <Label htmlFor="lead_notes" className="text-xs">Notes</Label>
+              <Textarea id="lead_notes" value={newLeadData.notes} onChange={e => setNewLeadData({ ...newLeadData, notes: e.target.value })} placeholder="Payment challenges, referral source..." rows={2} className="text-sm resize-none" />
+            </div>
+            <div className="flex items-center gap-2 pt-0.5">
+              <input
+                type="checkbox"
+                id="lead_converted"
+                checked={newLeadData.converted}
+                onChange={e => setNewLeadData({ ...newLeadData, converted: e.target.checked })}
+                className="h-4 w-4 rounded border-border cursor-pointer accent-green-600"
+              />
+              <Label htmlFor="lead_converted" className="text-sm cursor-pointer font-normal">Already converted?</Label>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddLeadDialog(false)}>Cancel</Button>
-            <Button onClick={handleAddLead}>Add Lead</Button>
+          <DialogFooter className="pt-1">
+            <Button variant="outline" size="sm" onClick={() => setShowAddLeadDialog(false)}>Cancel</Button>
+            <Button size="sm" onClick={handleAddLead}>Add Lead</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

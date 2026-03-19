@@ -49,6 +49,7 @@ export interface Invoice {
   vatEnabled: boolean;
   vatPercentage: number;
   vatAmount: number;
+  negotiationOptions?: NegotiationOptions;
 }
 
 export interface DashboardStats {

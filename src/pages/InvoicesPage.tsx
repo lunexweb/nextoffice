@@ -1305,7 +1305,7 @@ const InvoicesPage: React.FC = () => {
                             <CheckCircle size={13} /> Mark as Paid
                           </button>
                         )}
-                        {inv.status === 'sent' && (
+                        {inv.status === 'sent' && (inv.negotiationOptions?.balance_after_completion || inv.negotiationOptions?.allow_project_completion) && (
                           <button
                             className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50 transition-colors"
                             onClick={() => { handleMarkProjectCompleted(inv.id); setMoreMenuInvoiceId(null); }}

@@ -22,6 +22,7 @@ const mapInvoice = (row: any): Invoice => ({
   vatEnabled: row.vat_enabled || false,
   vatPercentage: parseFloat(row.vat_percentage) || 0,
   vatAmount: parseFloat(row.vat_amount) || 0,
+  negotiationOptions: row.negotiation_options || undefined,
 });
 
 export const invoiceService = {

@@ -476,8 +476,8 @@ const DashboardPage: React.FC = () => {
                         {event.label}
                       </span>
                       <span>· {event.targetDt.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })} at {formatTime12h(sendTime)}</span>
-                      {/* View count — only if something was sent before */}
-                      {event.lastSentAt && (
+                      {/* View count — only after this event was sent */}
+                      {event.sentToday && (
                         <span className={`inline-flex items-center gap-0.5 ${event.viewCount > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground/60'}`}>
                           <Eye size={9} /> {event.viewCount} view{event.viewCount !== 1 ? 's' : ''}
                         </span>

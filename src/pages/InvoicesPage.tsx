@@ -526,6 +526,17 @@ const InvoicesPage: React.FC = () => {
           >
             ← Back to Invoices
           </button>
+          {errorModal.show && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <NOCard className="w-full max-w-md shadow-2xl">
+                <div className="p-6">
+                  <h3 className="font-serif text-xl font-bold mb-4 text-red-600">Oops!</h3>
+                  <p className="text-sm text-muted-foreground mb-6">{errorModal.message}</p>
+                  <button onClick={() => setErrorModal({ show: false, message: '' })} className="w-full px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors font-semibold">OK</button>
+                </div>
+              </NOCard>
+            </div>
+          )}
         </div>
       );
     }
@@ -954,6 +965,17 @@ const InvoicesPage: React.FC = () => {
             </div>
           </div>
         </div>
+        {errorModal.show && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <NOCard className="w-full max-w-md shadow-2xl">
+              <div className="p-6">
+                <h3 className="font-serif text-xl font-bold mb-4 text-red-600">Oops!</h3>
+                <p className="text-sm text-muted-foreground mb-6">{errorModal.message}</p>
+                <button onClick={() => setErrorModal({ show: false, message: '' })} className="w-full px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors font-semibold">OK</button>
+              </div>
+            </NOCard>
+          </div>
+        )}
       </div>
     );
   }

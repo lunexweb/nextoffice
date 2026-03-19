@@ -98,7 +98,15 @@ class PDFService {
     if (data.businessPhone)   bizParts.push(data.businessPhone);
     if (data.businessEmail)   bizParts.push(data.businessEmail);
     if (data.vatNumber)       bizParts.push(`VAT: ${data.vatNumber}`);
-    if (bizParts.length) doc.text(bizParts.join('  ·  '), margin, 25);
+    if (bizParts.length) {
+      const bizLine = bizParts.join('  ·  ');
+      const maxBizW = W - margin * 2 - 60;
+      const truncated = doc.splitTextToSize(bizLine, maxBizW);
+      doc.text(truncated[0], margin, 25);
+      if (truncated.length > 1) {
+        doc.text(truncated[1], margin, 31);
+      }
+    }
 
     // "INVOICE" label right-side
     doc.setFont('helvetica', 'bold');
@@ -218,12 +226,13 @@ class PDFService {
     const totW = 85;
     const totX = W - margin - totW;
     const totValX = W - margin;
-    const rowH = 6.5;
+    const rowH = 8;
 
     const addTotalRow = (label: string, value: string, bold = false, highlight = false) => {
       if (highlight) {
+        y += 2;
         doc.setFillColor(...ink);
-        doc.rect(totX, y - 4.5, totW, rowH + 1, 'F');
+        doc.rect(totX, y - 5, totW, rowH + 2, 'F');
         doc.setTextColor(255, 255, 255);
       } else {
         doc.setTextColor(...(bold ? ink : muted));
@@ -231,7 +240,7 @@ class PDFService {
       doc.setFont('helvetica', bold ? 'bold' : 'normal');
       doc.setFontSize(highlight ? 10 : 9);
       doc.text(label, totX + 3, y);
-      doc.text(value, totValX, y, { align: 'right' });
+      doc.text(value, totValX - 2, y, { align: 'right' });
       if (!highlight) doc.setTextColor(...ink);
       y += rowH;
     };
@@ -243,27 +252,29 @@ class PDFService {
     if (data.tax != null && data.taxRate != null) {
       addTotalRow(`VAT (${data.taxRate}%)`, this.fmt(data.tax));
       // thin separator before total
+      y += 2;
       doc.setDrawColor(...border);
       doc.setLineWidth(0.3);
-      doc.line(totX, y - 1, W - margin, y - 1);
-      y += 1;
+      doc.line(totX, y - rowH + 1, W - margin, y - rowH + 1);
     }
 
     // Total
     addTotalRow('TOTAL', this.fmt(data.total), true, true);
-    y += 2;
+    y += 3;
 
     // Amount paid / balance due
     if (data.amountPaid != null && data.amountPaid > 0) {
       addTotalRow('Amount Paid', this.fmt(data.amountPaid));
+      // gold separator before balance
+      y += 2;
       doc.setDrawColor(...gold);
       doc.setLineWidth(0.4);
-      doc.line(totX, y - 1, W - margin, y - 1);
-      y += 1;
-      addTotalRow('BALANCE DUE', this.fmt(data.balance ?? data.total - data.amountPaid), true);
+      doc.line(totX, y - rowH + 1, W - margin, y - rowH + 1);
+      const bal = data.balance ?? data.total - data.amountPaid;
+      addTotalRow('BALANCE DUE', this.fmt(Math.abs(bal)), true);
     }
 
-    y += 6;
+    y += 8;
 
     // ── Banking Details ───────────────────────────────────────────────────────
     if (data.bankingDetails) {

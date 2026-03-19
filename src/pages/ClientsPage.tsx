@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Edit, Trash2, X, Save, User, Mail, Phone, MapPin, Briefcase } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, X, Save, User, Mail, Phone, MapPin, Briefcase, Eye } from 'lucide-react';
 import { NOCard } from '@/components/nextoffice/shared';
 import { useClients, useInvoices } from '@/hooks';
 import { useCommitments } from '@/hooks/useCommitments';
@@ -209,6 +209,7 @@ if (error) {
           const score = rated.score;
           const label = { short: rated.label, long: rated.longLabel };
 
+          const totalViews = clientInvoices.reduce((sum, inv) => sum + (inv.viewCount || 0), 0);
           const initials = c.name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2);
           const avatarBg = rated.isNew ? 'bg-blue-100 text-blue-700' : score >= 75 ? 'bg-green-100 text-green-700' : score >= 60 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700';
           const accentBar = rated.isNew ? 'bg-blue-400' : score >= 75 ? 'bg-green-500' : score >= 60 ? 'bg-amber-500' : 'bg-red-500';
@@ -251,6 +252,16 @@ if (error) {
                       />
                     </div>
                   </div>
+
+                  {/* Invoice views */}
+                  {clientInvoices.length > 0 && (
+                    <div className="flex items-center gap-1.5 mb-3 text-xs">
+                      <Eye size={12} className={totalViews > 0 ? 'text-blue-500' : 'text-muted-foreground/50'} />
+                      <span className={totalViews > 0 ? 'text-blue-600 font-medium' : 'text-muted-foreground'}>
+                        {totalViews} view{totalViews !== 1 ? 's' : ''} across {clientInvoices.length} invoice{clientInvoices.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  )}
 
                   {/* Contact info */}
                   <div className="space-y-2 flex-1">

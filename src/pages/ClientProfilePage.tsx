@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { NOCard, ScoreBar } from '@/components/nextoffice/shared';
+import { NOCard, ScoreBar, EngagementIndicator } from '@/components/nextoffice/shared';
 import { Client, Invoice, Commitment, ClientNote } from '@/types';
 import { getClientColorClasses, getScoreBarColor, formatCurrency, formatDate } from '@/utils/styles';
 import { Calendar, Clock, CreditCard, TrendingUp, AlertTriangle, CheckCircle, Zap, Eye, Download, Copy, Phone, FileText } from 'lucide-react';
@@ -418,6 +418,7 @@ const ClientProfilePage: React.FC = () => {
                           }`}>
                             {inv.status.charAt(0).toUpperCase() + inv.status.slice(1)}
                           </span>
+                          <EngagementIndicator engagement={{ viewCount: inv.viewCount || 0, lastViewedAt: inv.lastViewedAt }} size="sm" showCount={true} showLastViewed={true} />
                         </div>
                         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                           <span>{formatDate(inv.createdAt)}</span>

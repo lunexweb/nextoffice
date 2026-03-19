@@ -854,6 +854,20 @@ const InvoicesPage: React.FC = () => {
                       I Have Paid
                     </button>
                   </div>
+
+                  {/* NextOffice promo */}
+                  <div className="mt-4 pt-3 border-t border-[#DDE2EA] text-center">
+                    <p className="text-[10px] text-[#8A9BB0] mb-1.5">Need to invoice your own clients?</p>
+                    <a
+                      href="https://nextoffice.app"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block px-4 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-md font-medium hover:from-blue-700 hover:to-indigo-700 transition-all text-[11px]"
+                    >
+                      Try NextOffice Free →
+                    </a>
+                    <p className="text-[9px] text-[#B0BAC9] mt-1">Powered by NextOffice</p>
+                  </div>
                 </div>
               </NOCard>
             </div>

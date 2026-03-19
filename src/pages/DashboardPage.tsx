@@ -90,29 +90,42 @@ const DashboardPage: React.FC = () => {
   const totalDueSoon = dueSoonInvoices.reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0);
   const totalUpcoming = upcomingInvoices.reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0);
 
-  // Compute next follow-up for overdue invoices based on reminder rules
+  // Compute next follow-up for overdue invoices: next day after overdue, then every 2 days
   const getNextFollowUp = (dueDate: string) => {
     const due = new Date(dueDate);
     due.setHours(0, 0, 0, 0);
     const now = new Date();
     now.setHours(0, 0, 0, 0);
-    // Reminder schedule: 3 days after, 14 days after, then every 14 days
-    const steps = [3, 14, 28, 42, 56];
-    for (const step of steps) {
+    // Schedule: day 1 after due, then every 2 days (1, 3, 5, 7, 9, ...)
+    const daysOverdue = Math.floor((now.getTime() - due.getTime()) / 86400000);
+    if (daysOverdue < 1) {
+      // Not overdue yet
       const followUpDate = new Date(due);
-      followUpDate.setDate(followUpDate.getDate() + step);
-      if (followUpDate >= now) {
-        const daysUntil = Math.floor((followUpDate.getTime() - now.getTime()) / 86400000);
-        const label = step === 3 ? 'Overdue follow-up' : step === 14 ? 'Final notice' : 'Follow-up reminder';
-        return {
-          date: followUpDate.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' }),
-          daysUntil,
-          label,
-          isPast: false,
-        };
-      }
+      followUpDate.setDate(followUpDate.getDate() + 1);
+      const daysUntil = Math.floor((followUpDate.getTime() - now.getTime()) / 86400000);
+      return {
+        date: followUpDate.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }),
+        daysUntil,
+        label: 'First follow-up',
+        isPast: false,
+      };
     }
-    return { date: '', daysUntil: -1, label: 'All reminders sent', isPast: true };
+    // Find the next follow-up day: 1, 3, 5, 7, 9, ...
+    let nextStep = 1;
+    while (nextStep < daysOverdue) {
+      nextStep += 2;
+    }
+    const followUpDate = new Date(due);
+    followUpDate.setDate(followUpDate.getDate() + nextStep);
+    const daysUntil = Math.floor((followUpDate.getTime() - now.getTime()) / 86400000);
+    const followUpNumber = Math.floor((nextStep - 1) / 2) + 1;
+    const label = followUpNumber === 1 ? 'First follow-up' : `Follow-up #${followUpNumber}`;
+    return {
+      date: followUpDate.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }),
+      daysUntil,
+      label,
+      isPast: false,
+    };
   };
 
   if (loading) {
@@ -238,13 +251,15 @@ const DashboardPage: React.FC = () => {
                       <span className="font-medium">Next Follow Up</span>
                       <span className="text-muted-foreground hidden sm:inline">· {followUp.label}</span>
                     </div>
-                    {followUp.isPast ? (
-                      <span className="text-[10px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Done</span>
-                    ) : followUp.daysUntil === 0 ? (
-                      <span className="text-[10px] font-bold text-red-600 bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded-full animate-pulse">Today</span>
+                    {followUp.daysUntil === 0 ? (
+                      <span className="text-[10px] font-bold text-red-600 bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded-full animate-pulse">Today!</span>
+                    ) : followUp.daysUntil === 1 ? (
+                      <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full">
+                        {followUp.date} (tomorrow)
+                      </span>
                     ) : (
                       <span className="text-[10px] font-medium text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full">
-                        {followUp.date} ({followUp.daysUntil}d)
+                        {followUp.date} (in {followUp.daysUntil} days)
                       </span>
                     )}
                   </div>

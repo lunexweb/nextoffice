@@ -246,6 +246,16 @@ class PDFService {
     doc.text(
       `Generated on ${new Date().toLocaleDateString()} | ${data.businessName}`,
       105,
+      pageHeight - 16,
+      { align: 'center' }
+    );
+
+    // NextOffice promo
+    doc.setFontSize(7);
+    doc.setTextColor(79, 70, 229);
+    doc.text(
+      'Need to invoice your own clients? Try NextOffice free at nextoffice.app',
+      105,
       pageHeight - 10,
       { align: 'center' }
     );

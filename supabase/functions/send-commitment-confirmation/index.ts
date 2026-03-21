@@ -644,7 +644,7 @@ serve(async (req) => {
       }
 
       const siteUrl = Deno.env.get('SITE_URL') ?? 'https://app.trailbill.com';
-      const dashboardUrl = `${siteUrl}/commitments`;
+      const dashboardUrl = `${siteUrl}/app/commitments`;
 
       const ownerEmailHtml = `<!DOCTYPE html>
 <html lang="en">

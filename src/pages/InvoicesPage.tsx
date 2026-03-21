@@ -757,12 +757,12 @@ const InvoicesPage: React.FC = () => {
                 <input
                   type="text"
                   maxLength={30}
-                  value={formData.customField2 || previewInvoiceNum}
+                  value={formData.customField2 || ''}
                   onChange={e => setFormData({ ...formData, customField2: e.target.value })}
-                  placeholder={`Default: ${previewInvoiceNum} - Override for client-specific reference`}
+                  placeholder="Enter payment reference (PO number, client code, etc.)"
                   className="w-full p-3 rounded-md border border-border bg-no-surface-raised mt-1 outline-none focus:ring-2 focus:ring-primary text-sm"
                 />
-                <p className="text-xs text-muted-foreground mt-1">Leave blank to use invoice number as reference</p>
+                <p className="text-xs text-muted-foreground mt-1">This reference will appear on invoice and banking details</p>
               </div>
             </div>
           </NOCard>
@@ -1365,7 +1365,7 @@ const InvoicesPage: React.FC = () => {
                 amountPaid: inv.amountPaid > 0 ? inv.amountPaid : undefined,
                 balance: inv.amountPaid > 0 ? inv.amount - inv.amountPaid : undefined,
                 vatNumber: businessProfile?.vatSettings?.registrationNumber || undefined,
-                bankingDetails: businessProfile?.bankingDetails?.bank ? { bank: businessProfile.bankingDetails.bank, account: businessProfile.bankingDetails.account, branch: businessProfile.bankingDetails.branch, type: businessProfile.bankingDetails.type, reference: inv.customField2 || inv.number } : undefined,
+                bankingDetails: businessProfile?.bankingDetails?.bank ? { bank: businessProfile.bankingDetails.bank, account: businessProfile.bankingDetails.account, branch: businessProfile.bankingDetails.branch, type: businessProfile.bankingDetails.type, reference: inv.customField2 } : undefined,
                 customField1: inv.customField1,
                 customField2: inv.customField2,
                 logoUrl: businessProfile?.logoUrl,

@@ -503,20 +503,27 @@ const InvoicesPage: React.FC = () => {
                     },
                   });
 
+                  console.log('send-invoice response:', { data, error });
+
                   if (error) {
-                    throw error;
+                    const errMsg = error?.message || error?.context?.body || String(error);
+                    throw new Error(errMsg);
+                  }
+
+                  if (data?.error) {
+                    throw new Error(data.error);
                   }
 
                   setEmailSent(true);
                   toast({
-                    title: 'Email Sent!',
-                    description: `Invoice ${createdInvoiceNumber} has been sent to ${client.email}`,
+                    title: 'Invoice Emailed!',
+                    description: `Invoice ${createdInvoiceNumber} sent to ${client.email}`,
                   });
-                } catch (err) {
+                } catch (err: any) {
                   console.error('Failed to send email:', err);
                   toast({
                     title: 'Failed to Send Email',
-                    description: 'There was an error sending the invoice. Please try again.',
+                    description: err?.message || 'Unknown error. Please try again.',
                     variant: 'destructive',
                   });
                 } finally {

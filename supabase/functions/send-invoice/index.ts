@@ -40,6 +40,7 @@ serve(async (req) => {
     if (!resendApiKey) {
       throw new Error('RESEND_API_KEY not configured');
     }
+    console.log('[send-invoice] RESEND_API_KEY present');
 
     // Service-role client for reliable DB lookups
     const serviceClient = createClient(
@@ -49,6 +50,7 @@ serve(async (req) => {
 
     const resend = new ResendClient(resendApiKey);
     const requestData: InvoiceEmailRequest = await req.json();
+    console.log('[send-invoice] Request:', JSON.stringify({ invoiceNumber: requestData.invoiceNumber, recipientEmail: requestData.recipientEmail, businessName: requestData.businessName }));
 
     const { invoiceNumber, recipientEmail, recipientName, amount, dueDate } = requestData;
 
@@ -273,12 +275,14 @@ serve(async (req) => {
 </body>
 </html>`;
 
+    console.log('[send-invoice] Sending email from:', `${businessName} <${fromEmail}>`, 'to:', recipientEmail);
     const result = await resend.sendEmail({
       from: `${businessName} <${fromEmail}>`,
       to: recipientEmail,
       subject: emailSubject,
       html: emailHtml,
     });
+    console.log('[send-invoice] Resend result:', JSON.stringify(result));
 
     const { error: logError } = await serviceClient
       .from('communication_logs')
@@ -294,9 +298,10 @@ serve(async (req) => {
       });
 
     if (logError) {
-      console.error('Failed to log communication:', logError);
+      console.error('[send-invoice] Failed to log communication:', logError);
     }
 
+    console.log('[send-invoice] SUCCESS - email sent to', recipientEmail);
     return new Response(
       JSON.stringify({ success: true, emailId: result.id }),
       {
@@ -305,9 +310,9 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error('Error sending invoice email:', error);
+    console.error('[send-invoice] ERROR:', error.message, error.stack);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message, details: String(error) }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,

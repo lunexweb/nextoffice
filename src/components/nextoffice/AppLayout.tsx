@@ -84,13 +84,22 @@ const AppLayout: React.FC = () => {
         transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
         className="h-screen fixed left-0 top-0 z-50 border-r border-border bg-card hidden md:flex flex-col transition-colors duration-200"
       >
-        <div className="p-4 flex items-center gap-3 overflow-hidden h-16 border-b border-border">
-          {businessProfile?.logoUrl ? (
-            <img src={businessProfile.logoUrl} alt="Logo" className="min-w-[32px] h-8 w-8 rounded object-contain flex-shrink-0" />
-          ) : (
-            <div className="min-w-[32px] h-8 w-8 rounded bg-primary flex items-center justify-center text-primary-foreground font-serif font-bold text-sm flex-shrink-0">T</div>
+        <div className="p-4 flex items-center justify-between overflow-hidden h-16 border-b border-border">
+          {/* Left side: Always Trailbill.com branding */}
+          <div className="flex items-center gap-3">
+            <div className="min-w-[32px] h-8 w-8 rounded bg-primary flex items-center justify-center text-primary-foreground font-serif font-bold text-sm">T</div>
+            {!collapsed && <span className="font-serif font-bold text-xl whitespace-nowrap">Trailbill<span className="font-sans font-medium text-xs text-primary/70 ml-[1px]">.com</span></span>}
+          </div>
+          
+          {/* Right side: User's logo and business name */}
+          {!collapsed && (
+            <div className="flex items-center gap-3">
+              {businessProfile?.logoUrl && (
+                <img src={businessProfile.logoUrl} alt="Business Logo" className="h-8 max-w-[120px] object-contain" />
+              )}
+              <span className="font-serif font-bold text-xl whitespace-nowrap text-muted-foreground">{businessProfile?.businessName}</span>
+            </div>
           )}
-          {!collapsed && <span className="font-serif font-bold text-xl whitespace-nowrap">{businessProfile?.businessName || 'Trailbill'}<span className="font-sans font-medium text-xs text-primary/70 ml-[1px]">.com</span></span>}
         </div>
 
         <nav className="flex-1 p-2 space-y-1 mt-4 overflow-hidden">

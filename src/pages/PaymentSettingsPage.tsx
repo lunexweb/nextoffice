@@ -173,6 +173,7 @@ const PaymentSettingsPage: React.FC = () => {
       }
 
       setSaveStatus('success');
+      window.dispatchEvent(new CustomEvent('profileUpdated'));
       setTimeout(() => setSaveStatus('idle'), 4000);
     } catch (err: any) {
       setSaveStatus('error');

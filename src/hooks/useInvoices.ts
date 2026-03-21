@@ -64,7 +64,7 @@ export const useInvoices = () => {
       setLoading(true);
       setError(null);
       const profile = await profileService.get();
-      const prefix = profile?.businessName ? 'INV' : 'INV';
+      const prefix = profile?.invoicePrefix || 'INV';
       const invoiceNumber = await invoiceService.getNextNumber(prefix);
       const banking = profile?.bankingDetails || { bank: '', account: '', branch: '', type: '' };
       const newInvoice = await invoiceService.create(data, invoiceNumber, banking);

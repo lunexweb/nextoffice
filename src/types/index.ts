@@ -112,6 +112,8 @@ export interface BusinessProfile {
     percentage: number;
     registrationNumber: string;
   };
+  invoicePrefix?: string;
+  invoiceStartNumber?: number;
 }
 
 export interface ClientFormData {

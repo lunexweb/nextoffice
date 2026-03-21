@@ -9,6 +9,7 @@ import { SectionLoading } from '@/components/ui/LoadingStates';
 import { communicationService } from '@/services/api/communicationService';
 import { supabase } from '@/lib/supabase';
 import { InvoiceNegotiationOptions } from '@/components/nextoffice/InvoiceNegotiationOptions';
+import { invoiceService } from '@/services/api/invoiceService';
 
 const InvoicesPage: React.FC = () => {
   const [view, setView] = useState<'list' | 'create'>('list');
@@ -33,6 +34,7 @@ const InvoicesPage: React.FC = () => {
   const [installmentPayDates, setInstallmentPayDates] = useState<Record<number, string>>({});
   const [paymentType, setPaymentType] = useState<PaymentType>('full');
   const [paymentAmount, setPaymentAmount] = useState<number>(0);
+  const [nextInvoiceNumber, setNextInvoiceNumber] = useState<string>('');
   
   const [formData, setFormData] = useState<InvoiceFormData>({
     clientId: '',
@@ -65,6 +67,13 @@ const InvoicesPage: React.FC = () => {
   const { clients, loading: clientsLoading } = useClients();
   const { generating, downloadInvoicePDF, previewInvoicePDF } = usePDF();
   const { businessProfile } = useBusinessProfile();
+
+  // Fetch actual next invoice number whenever we enter create view or prefix changes
+  useEffect(() => {
+    if (view !== 'create' || editingInvoiceId) return;
+    const prefix = businessProfile?.invoicePrefix || 'INV';
+    invoiceService.getNextNumber(prefix).then(setNextInvoiceNumber);
+  }, [view, editingInvoiceId, businessProfile?.invoicePrefix]);
   const invoiceIds = invoices.map(i => i.id);
   const { recordPayment, getInvoicePayments } = usePayments(invoiceIds);
 
@@ -542,7 +551,9 @@ const InvoicesPage: React.FC = () => {
     }
 
     const selectedClient = clients.find(c => c.id === formData.clientId);
-    const nextInvoiceNumber = `INV-${String(invoices.length + 1).padStart(3, '0')}`;
+    const previewInvoiceNum = editingInvoiceId
+      ? (invoices.find(i => i.id === editingInvoiceId)?.number || '')
+      : (nextInvoiceNumber || `${businessProfile?.invoicePrefix || 'INV'}-???`);
 
     return (
       <div className="p-4 sm:p-6 lg:p-8">
@@ -577,7 +588,7 @@ const InvoicesPage: React.FC = () => {
               <div>
                 <label className="text-xs font-bold text-muted-foreground uppercase">Invoice Number</label>
                 <input 
-                  value={editingInvoiceId ? invoices.find(i => i.id === editingInvoiceId)?.number || '' : `INV-${String(invoices.length + 1).padStart(3, '0')}`} 
+                  value={previewInvoiceNum} 
                   disabled 
                   className="w-full p-3 rounded-md border border-border bg-muted/50 font-mono mt-1" 
                 />
@@ -632,13 +643,13 @@ const InvoicesPage: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="text-xs font-bold text-muted-foreground uppercase">Custom Field 2 <span className="normal-case text-muted-foreground/60">(optional)</span></label>
+                <label className="text-xs font-bold text-muted-foreground uppercase">Reference <span className="normal-case text-muted-foreground/60">(optional)</span></label>
                 <input
                   type="text"
                   maxLength={30}
                   value={formData.customField2 || ''}
                   onChange={e => setFormData({ ...formData, customField2: e.target.value })}
-                  placeholder="e.g. Reference, Contract no…"
+                  placeholder="e.g. PO number, client reference…"
                   className="w-full p-3 rounded-md border border-border bg-no-surface-raised mt-1 outline-none focus:ring-2 focus:ring-primary text-sm"
                 />
               </div>
@@ -853,9 +864,9 @@ const InvoicesPage: React.FC = () => {
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <p className="text-[10px] font-bold text-[#52606D] uppercase">Invoice</p>
-                      <p className="font-mono text-sm">#{nextInvoiceNumber}</p>
+                      <p className="font-mono text-sm">#{previewInvoiceNum}</p>
                       {formData.customField1 && <p className="text-[10px] text-[#52606D] mt-0.5">{formData.customField1}</p>}
-                      {formData.customField2 && <p className="text-[10px] text-[#52606D]">{formData.customField2}</p>}
+                      {formData.customField2 && <p className="text-[10px] font-semibold text-[#52606D]">Ref: {formData.customField2}</p>}
                     </div>
                     <p className="font-mono text-xl font-bold text-[#C49A2A]">R{total.toLocaleString()}</p>
                   </div>
@@ -917,7 +928,7 @@ const InvoicesPage: React.FC = () => {
                       </div>
                       <div>
                         <p className="text-[9px] uppercase tracking-wider text-[#8A9BB0] font-semibold">Reference</p>
-                        <p className="font-bold text-[#C49A2A] font-mono">{nextInvoiceNumber}</p>
+                        <p className="font-bold text-[#C49A2A] font-mono">{formData.customField2 || previewInvoiceNum}</p>
                       </div>
                     </div>
                   </div>

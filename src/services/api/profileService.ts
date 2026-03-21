@@ -20,6 +20,8 @@ const mapProfile = (row: any): BusinessProfile => ({
     percentage: row.vat_percentage || 15,
     registrationNumber: row.vat_number || '',
   },
+  invoicePrefix: row.invoice_prefix || 'INV',
+  invoiceStartNumber: row.invoice_start_number || 1,
 });
 
 export const profileService = {

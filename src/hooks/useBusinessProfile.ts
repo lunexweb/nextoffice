@@ -19,20 +19,23 @@ export const useBusinessProfile = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const load = async () => {
+    try {
+      setLoading(true);
+      const data = await profileService.get();
+      if (data) setBusinessProfile(data);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load profile');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const load = async () => {
-      try {
-        setLoading(true);
-        const data = await profileService.get();
-        if (data) setBusinessProfile(data);
-        setError(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load profile');
-      } finally {
-        setLoading(false);
-      }
-    };
     load();
+    window.addEventListener('profileUpdated', load);
+    return () => window.removeEventListener('profileUpdated', load);
   }, []);
 
   const updateBusinessProfile = async (updates: Partial<BusinessProfile>) => {

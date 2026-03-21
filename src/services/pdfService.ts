@@ -113,9 +113,9 @@ class PDFService {
       const bizLine = bizParts.join('  ·  ');
       const maxBizW = W - margin * 2 - 60;
       const truncated = doc.splitTextToSize(bizLine, maxBizW);
-      doc.text(truncated[0], margin, 25);
+      doc.text(truncated[0], margin + logoOffset, 25);
       if (truncated.length > 1) {
-        doc.text(truncated[1], margin, 31);
+        doc.text(truncated[1], margin + logoOffset, 31);
       }
     }
 

@@ -490,15 +490,6 @@ const InvoicesPage: React.FC = () => {
                     },
                   });
                   setEmailSent(true);
-                  communicationService.create({
-                    invoice_id: createdInvoiceId,
-                    client_id: formData.clientId,
-                    type: 'initial_invoice',
-                    status: 'sent',
-                    subject: `Invoice ${createdInvoiceNumber}`,
-                    body: 'Sent via Email',
-                    recipient_email: client?.email || '',
-                  }).catch(console.error);
                 } catch (err) {
                   console.error('Failed to send email:', err);
                   setErrorModal({ show: true, message: 'Failed to send email. Please try again.' });

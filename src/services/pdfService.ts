@@ -48,98 +48,135 @@ class PDFService {
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const W = doc.internal.pageSize.getWidth();
     const H = doc.internal.pageSize.getHeight();
-    const margin = 25;
+    const margin = 20;
 
-    // Professional color palette - minimal and sophisticated
-    const black = [0, 0, 0];
-    const darkGray = [60, 60, 60];
-    const mediumGray = [120, 120, 120];
-    const lightGray = [240, 240, 240];
+    // Sophisticated color palette
+    const primary = [26, 35, 126];      // Deep professional blue
+    const secondary = [92, 107, 192];   // Lighter blue accent
+    const dark = [33, 33, 33];         // Rich black
+    const gray = [117, 117, 117];      // Medium gray
+    const lightGray = [245, 245, 245]; // Very light gray background
     const white = [255, 255, 255];
-    const accentBlue = [41, 98, 255];
+    const success = [46, 125, 50];     // Professional green
+    const divider = [224, 224, 224];   // Subtle divider
 
     let yPos = margin;
 
-    // Logo and Business Header (left side)
+    // Header with accent bar
+    doc.setFillColor(...primary);
+    doc.rect(0, 0, W, 8);
+
+    yPos = 18;
+
+    // Logo
     if (data.logoDataUrl) {
       try {
-        doc.addImage(data.logoDataUrl, 'PNG', margin, yPos, 30, 20);
+        doc.addImage(data.logoDataUrl, 'PNG', margin, yPos, 35, 24);
       } catch { /* skip logo */ }
     }
 
-    // Business info (top left)
-    doc.setTextColor(...darkGray);
+    // Business name and info
+    doc.setTextColor(...dark);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.text(data.businessName, margin, yPos + 28);
+    doc.setFontSize(16);
+    doc.text(data.businessName, margin, yPos + 32);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
-    doc.setTextColor(...mediumGray);
-    let businessY = yPos + 35;
+    doc.setTextColor(...gray);
+    let businessY = yPos + 40;
     if (data.businessAddress) {
       doc.text(data.businessAddress, margin, businessY);
-      businessY += 4;
+      businessY += 5;
     }
     if (data.businessPhone) {
-      doc.text(data.businessPhone, margin, businessY);
-      businessY += 4;
+      doc.text('Tel: ' + data.businessPhone, margin, businessY);
+      businessY += 5;
     }
     if (data.businessEmail) {
-      doc.text(data.businessEmail, margin, businessY);
-      businessY += 4;
+      doc.text('Email: ' + data.businessEmail, margin, businessY);
+      businessY += 5;
     }
     if (data.vatNumber) {
-      doc.text('VAT: ' + data.vatNumber, margin, businessY);
+      doc.text('VAT No: ' + data.vatNumber, margin, businessY);
     }
 
-    // INVOICE title and details (top right)
-    doc.setTextColor(...black);
+    // INVOICE title (top right)
+    doc.setTextColor(...primary);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(24);
-    doc.text('INVOICE', W - margin, yPos, { align: 'right' });
+    doc.setFontSize(32);
+    doc.text('INVOICE', W - margin, yPos + 8, { align: 'right' });
 
+    // Invoice details box (top right)
+    const detailsBoxY = yPos + 20;
+    doc.setFillColor(...lightGray);
+    doc.rect(W - margin - 60, detailsBoxY, 60, 32);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(...gray);
+    doc.text('INVOICE NO.', W - margin - 55, detailsBoxY + 6);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(...dark);
+    doc.text(data.invoiceNumber, W - margin - 55, detailsBoxY + 12);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(...gray);
+    doc.text('DATE', W - margin - 55, detailsBoxY + 20);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(...darkGray);
-    doc.text('Invoice #: ' + data.invoiceNumber, W - margin, yPos + 12, { align: 'right' });
-    doc.text('Date: ' + data.invoiceDate, W - margin, yPos + 19, { align: 'right' });
-    doc.text('Due Date: ' + data.dueDate, W - margin, yPos + 26, { align: 'right' });
+    doc.setFontSize(9);
+    doc.setTextColor(...dark);
+    doc.text(data.invoiceDate, W - margin - 55, detailsBoxY + 26);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(...gray);
+    doc.text('DUE DATE', W - margin - 25, detailsBoxY + 20);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...dark);
+    doc.text(data.dueDate, W - margin - 25, detailsBoxY + 26);
 
     // Divider line
     yPos = yPos + 55;
-    doc.setDrawColor(...lightGray);
-    doc.setLineWidth(0.5);
+    doc.setDrawColor(...divider);
+    doc.setLineWidth(1);
     doc.line(margin, yPos, W - margin, yPos);
 
-    // Bill To section
-    yPos += 10;
-    doc.setTextColor(...mediumGray);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.text('BILL TO', margin, yPos);
+    // Bill To section with box
+    yPos += 12;
+    doc.setFillColor(...lightGray);
+    doc.rect(margin, yPos - 3, 85, 30);
 
-    yPos += 6;
-    doc.setTextColor(...darkGray);
+    doc.setTextColor(...primary);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text('BILL TO', margin + 5, yPos + 3);
+
+    yPos += 10;
+    doc.setTextColor(...dark);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
-    doc.text(data.clientName, margin, yPos);
+    doc.text(data.clientName, margin + 5, yPos);
 
     yPos += 6;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
-    doc.setTextColor(...mediumGray);
+    doc.setTextColor(...gray);
     if (data.clientAddress) {
-      doc.text(data.clientAddress, margin, yPos);
-      yPos += 4;
+      doc.text(data.clientAddress, margin + 5, yPos);
+      yPos += 5;
     }
     if (data.clientEmail) {
-      doc.text(data.clientEmail, margin, yPos);
-      yPos += 4;
+      doc.text(data.clientEmail, margin + 5, yPos);
+      yPos += 5;
     }
 
-    // Items table
     yPos += 10;
+
+    // Items table
     const tableHeaders = [['Description', 'Qty', 'Rate', 'Amount']];
     const tableData = data.items.map(item => [
       item.description,
@@ -153,105 +190,118 @@ class PDFService {
       body: tableData,
       startY: yPos,
       margin: { left: margin, right: margin },
-      theme: 'plain',
+      theme: 'grid',
       headStyles: {
-        fillColor: white,
-        textColor: black,
+        fillColor: primary,
+        textColor: white,
         fontStyle: 'bold',
-        fontSize: 9,
-        cellPadding: { top: 3, bottom: 6, left: 0, right: 0 },
-        lineWidth: { bottom: 0.5 },
-        lineColor: darkGray,
+        fontSize: 10,
+        cellPadding: 6,
+        halign: 'left',
       },
       bodyStyles: {
         fillColor: white,
-        textColor: darkGray,
+        textColor: dark,
         fontSize: 9,
-        cellPadding: { top: 6, bottom: 6, left: 0, right: 0 },
+        cellPadding: 8,
+      },
+      alternateRowStyles: {
+        fillColor: lightGray,
       },
       columnStyles: {
         0: { cellWidth: 'auto', halign: 'left' },
         1: { cellWidth: 25, halign: 'center' },
-        2: { cellWidth: 35, halign: 'right' },
-        3: { cellWidth: 40, halign: 'right' },
+        2: { cellWidth: 38, halign: 'right' },
+        3: { cellWidth: 42, halign: 'right', fontStyle: 'bold' },
       },
-      didParseCell: function(data) {
-        if (data.section === 'body' && data.row.index === tableData.length - 1) {
-          data.cell.styles.lineWidth = { bottom: 0.5 };
-          data.cell.styles.lineColor = lightGray;
-        }
-      }
+      lineColor: divider,
+      lineWidth: 0.5,
     });
 
     const tableEnd = (doc as any).lastAutoTable.finalY || yPos + 50;
-    yPos = tableEnd + 15;
+    yPos = tableEnd + 12;
 
-    // Totals section (right aligned)
-    const totalsX = W - margin - 50;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(...darkGray);
+    // Totals section with background box
+    const totalsBoxWidth = 65;
+    const totalsBoxX = W - margin - totalsBoxWidth;
+    
+    doc.setFillColor(...lightGray);
+    doc.rect(totalsBoxX - 5, yPos - 5, totalsBoxWidth + 5, 45);
 
     // Subtotal
-    doc.text('Subtotal:', totalsX, yPos, { align: 'right' });
-    doc.text(this.fmt(data.subtotal), W - margin, yPos, { align: 'right' });
-    yPos += 7;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(...gray);
+    doc.text('Subtotal', totalsBoxX, yPos);
+    doc.setTextColor(...dark);
+    doc.text(this.fmt(data.subtotal), W - margin - 5, yPos, { align: 'right' });
+    yPos += 8;
 
     // Tax
     if (data.tax && data.taxRate) {
-      doc.text('VAT (' + data.taxRate + '%):', totalsX, yPos, { align: 'right' });
-      doc.text(this.fmt(data.tax), W - margin, yPos, { align: 'right' });
-      yPos += 7;
+      doc.setTextColor(...gray);
+      doc.text('VAT (' + data.taxRate + '%)', totalsBoxX, yPos);
+      doc.setTextColor(...dark);
+      doc.text(this.fmt(data.tax), W - margin - 5, yPos, { align: 'right' });
+      yPos += 8;
     }
 
-    // Line above total
-    doc.setDrawColor(...darkGray);
-    doc.setLineWidth(0.5);
-    doc.line(totalsX - 5, yPos, W - margin, yPos);
-    yPos += 8;
+    // Divider
+    doc.setDrawColor(...divider);
+    doc.setLineWidth(1);
+    doc.line(totalsBoxX, yPos, W - margin - 5, yPos);
+    yPos += 10;
 
     // Total
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
-    doc.setTextColor(...black);
-    doc.text('TOTAL:', totalsX, yPos, { align: 'right' });
-    doc.text(this.fmt(data.total), W - margin, yPos, { align: 'right' });
+    doc.setFontSize(13);
+    doc.setTextColor(...primary);
+    doc.text('TOTAL', totalsBoxX, yPos);
+    doc.setFontSize(14);
+    doc.text(this.fmt(data.total), W - margin - 5, yPos, { align: 'right' });
     yPos += 15;
 
-    // Payment status (if applicable)
+    // Payment status
     if (data.amountPaid !== undefined && data.amountPaid > 0) {
+      yPos += 8;
+      const statusBoxY = yPos;
+      const statusColor = data.balance === 0 ? success : secondary;
+      
+      doc.setFillColor(...statusColor);
+      doc.rect(margin, statusBoxY, W - margin * 2, 22);
+      
+      doc.setTextColor(...white);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      const statusText = data.balance === 0 ? 'PAID IN FULL' : 'PARTIAL PAYMENT';
+      doc.text(statusText, margin + 8, statusBoxY + 8);
+      
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
-      doc.setTextColor(...mediumGray);
-      doc.text('Amount Paid:', totalsX, yPos, { align: 'right' });
-      doc.text(this.fmt(data.amountPaid), W - margin, yPos, { align: 'right' });
-      yPos += 6;
-
-      const balanceColor = data.balance === 0 ? [0, 128, 0] : darkGray;
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...balanceColor);
-      doc.text('Balance Due:', totalsX, yPos, { align: 'right' });
-      doc.text(this.fmt(data.balance || 0), W - margin, yPos, { align: 'right' });
-      yPos += 10;
+      doc.text('Amount Paid: ' + this.fmt(data.amountPaid), margin + 8, statusBoxY + 16);
+      if (data.balance && data.balance > 0) {
+        doc.text('Balance: ' + this.fmt(data.balance), W - margin - 8, statusBoxY + 16, { align: 'right' });
+      }
+      yPos += 30;
     }
 
-    // Banking details section
+    // Banking details
     if (data.bankingDetails?.bank) {
-      yPos += 10;
-      doc.setDrawColor(...lightGray);
-      doc.setLineWidth(0.5);
+      yPos += 12;
+      doc.setDrawColor(...divider);
+      doc.setLineWidth(1);
       doc.line(margin, yPos, W - margin, yPos);
       yPos += 10;
 
-      doc.setTextColor(...mediumGray);
+      doc.setTextColor(...primary);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(9);
       doc.text('PAYMENT DETAILS', margin, yPos);
-      yPos += 7;
+      yPos += 8;
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
-      doc.setTextColor(...darkGray);
+      doc.setTextColor(...dark);
 
       const bankDetails = [
         'Bank: ' + data.bankingDetails.bank,
@@ -260,37 +310,37 @@ class PDFService {
         'Account Type: ' + data.bankingDetails.type,
       ];
       if (data.bankingDetails.reference) {
-        bankDetails.push('Reference: ' + data.bankingDetails.reference);
+        bankDetails.push('Payment Reference: ' + data.bankingDetails.reference);
       }
 
       bankDetails.forEach(detail => {
         doc.text(detail, margin, yPos);
-        yPos += 5;
+        yPos += 5.5;
       });
     }
 
-    // Notes section
+    // Notes
     if (data.customField1 || data.customField2) {
-      yPos += 10;
-      doc.setDrawColor(...lightGray);
-      doc.setLineWidth(0.5);
+      yPos += 12;
+      doc.setDrawColor(...divider);
+      doc.setLineWidth(1);
       doc.line(margin, yPos, W - margin, yPos);
       yPos += 10;
 
-      doc.setTextColor(...mediumGray);
+      doc.setTextColor(...primary);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(9);
       doc.text('NOTES', margin, yPos);
-      yPos += 7;
+      yPos += 8;
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
-      doc.setTextColor(...darkGray);
+      doc.setTextColor(...dark);
 
       if (data.customField1) {
         const lines = doc.splitTextToSize(data.customField1, W - margin * 2);
         doc.text(lines, margin, yPos);
-        yPos += lines.length * 5;
+        yPos += lines.length * 5.5;
       }
       if (data.customField2) {
         const lines = doc.splitTextToSize(data.customField2, W - margin * 2);
@@ -299,15 +349,18 @@ class PDFService {
     }
 
     // Footer
-    const footerY = H - 20;
-    doc.setDrawColor(...lightGray);
-    doc.setLineWidth(0.5);
-    doc.line(margin, footerY, W - margin, footerY);
+    const footerY = H - 25;
+    doc.setFillColor(...primary);
+    doc.rect(0, footerY, W, 8);
 
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...gray);
+    doc.text('Thank you for your business', W / 2, footerY + 15, { align: 'center' });
+    
     doc.setFont('helvetica', 'italic');
-    doc.setFontSize(8);
-    doc.setTextColor(...mediumGray);
-    doc.text('Thank you for your business', W / 2, footerY + 6, { align: 'center' });
+    doc.setFontSize(7);
+    doc.text(data.businessName, W / 2, footerY + 21, { align: 'center' });
 
     return doc;
   }

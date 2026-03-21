@@ -6,38 +6,26 @@ export interface InvoicePDFData {
   invoiceDate: string;
   dueDate: string;
   status: string;
-
-  // Business Info
   businessName: string;
   businessAddress?: string;
   businessPhone?: string;
   businessEmail?: string;
   vatNumber?: string;
-
-  // Client Info
   clientName: string;
   clientEmail?: string;
   clientAddress?: string;
-
-  // Invoice Items
   items: Array<{
     description: string;
     quantity: number;
     rate: number;
     amount: number;
   }>;
-
-  // Totals
   subtotal: number;
   tax?: number;
   taxRate?: number;
   total: number;
-
-  // Payment Info
   amountPaid?: number;
   balance?: number;
-
-  // Banking Details
   bankingDetails?: {
     bank: string;
     account: string;
@@ -45,143 +33,112 @@ export interface InvoicePDFData {
     type: string;
     reference?: string;
   };
-
-  // Custom Fields
   customField1?: string;
   customField2?: string;
-
-  // Logo
   logoUrl?: string;
   logoDataUrl?: string;
 }
 
 class PDFService {
   private fmt(n: number): string {
-    return `R ${n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return 'R ' + n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
   generateInvoicePDF(data: InvoicePDFData): jsPDF {
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 25;
+    const margin = 20;
     const W = pageWidth;
     const H = pageHeight;
 
-    // Professional color palette
     const colors = {
-      primary: [41, 67, 111],
-      secondary: [71, 85, 105],
-      accent: [59, 130, 246],
+      primary: [31, 41, 55],
+      secondary: [59, 130, 246],
+      accent: [99, 102, 241],
       text: [30, 41, 59],
-      muted: [148, 163, 184],
+      muted: [107, 114, 128],
       white: [255, 255, 255],
       light: [248, 250, 252],
-      gold: [212, 175, 55]
+      success: [16, 185, 129],
+      warning: [251, 146, 60],
     };
 
-    // Header with professional design
-    let logoOffset = 0;
+    // Header
+    doc.setFillColor(...colors.primary);
+    doc.rect(0, 0, W, 45);
+
+    let logoX = margin;
     if (data.logoDataUrl) {
       try {
-        doc.addImage(data.logoDataUrl, 'PNG', margin, 8, 20, 25);
-        logoOffset = 35;
+        doc.addImage(data.logoDataUrl, 'PNG', logoX, 8, 35, 25);
+        logoX = 45;
       } catch { /* skip logo if it fails */ }
     }
 
-    // Accent bar
-    doc.setFillColor(...colors.primary);
-    doc.rect(margin, 50, W - margin * 2, 3);
-
-    // Business info section
     doc.setTextColor(...colors.white);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.text(data.businessName, margin + logoOffset, 25);
+    doc.setFontSize(20);
+    doc.text(data.businessName, logoX, 25);
 
-    // Clean business details
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(...colors.muted);
-    const bizParts: string[] = [];
-    if (data.businessAddress) bizParts.push(data.businessAddress);
-    if (data.businessPhone)   bizParts.push(data.businessPhone);
-    if (data.businessEmail)   bizParts.push(data.businessEmail);
-    if (data.vatNumber)       bizParts.push(`VAT: ${data.vatNumber}`);
-
-    if (bizParts.length) {
-      let yPos = 35;
-      bizParts.forEach((part, index) => {
-        doc.text(part, margin + logoOffset, yPos);
-        yPos += 7;
-      });
-    }
-
-    // Invoice details
-    doc.setTextColor(...colors.white);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(28);
-    doc.text('INVOICE', W - margin, 25);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
-    doc.setTextColor(...colors.light);
-    doc.text(data.invoiceNumber, W - margin, 35);
+    doc.setTextColor(...colors.accent);
+    const businessDetails = [];
+    if (data.businessAddress) businessDetails.push(data.businessAddress);
+    if (data.businessPhone) businessDetails.push(data.businessPhone);
+    if (data.businessEmail) businessDetails.push(data.businessEmail);
+    if (data.vatNumber) businessDetails.push('VAT: ' + data.vatNumber);
 
-    let y = 60;
-
-    // Two-column layout
-    const col2 = W / 2 + 5;
-
-    // Bill To section
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.setTextColor(...colors.gold);
-    doc.text('BILL TO', margin, y);
-    y += 5;
-    
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.setTextColor(...colors.text);
-    doc.text(data.clientName, margin, y);
-    y += 5;
-    
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
-    doc.setTextColor(...colors.muted);
-    if (data.clientEmail)   { doc.text(data.clientEmail, margin, y);   y += 4.5; }
-    if (data.clientAddress) { doc.text(data.clientAddress, margin, y); y += 4.5; }
-
-    // Invoice details (right column)
-    const detailStartY = 60;
-    const labelX = col2;
-    const valueX = W - margin;
-
-    const detailRows: [string, string][] = [
-      ['Invoice No.', data.invoiceNumber],
-      ['Invoice Date', data.invoiceDate],
-      ['Due Date', data.dueDate],
-    ];
-    if (data.customField1) detailRows.push(['', data.customField1]);
-    if (data.customField2) detailRows.push(['', data.customField2]);
-
-    let dy = detailStartY;
-    detailRows.forEach(([label, value]) => {
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7.5);
-      doc.setTextColor(...colors.muted);
-      if (label) doc.text(label, labelX, dy);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
-      doc.setTextColor(...colors.text);
-      doc.text(value, valueX, dy, { align: 'right' });
-      dy += 6;
+    let detailY = 35;
+    businessDetails.forEach(detail => {
+      doc.text(detail, logoX, detailY);
+      detailY += 6;
     });
 
-    y = Math.max(y, dy) + 15;
+    doc.setTextColor(...colors.white);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(32);
+    doc.text('INVOICE', W - margin, 25);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.setTextColor(...colors.accent);
+    doc.text('#' + data.invoiceNumber, W - margin, 32);
+    doc.text('Date: ' + data.invoiceDate, W - margin, 39);
+    doc.text('Due: ' + data.dueDate, W - margin, 46);
 
-    // Items table
-    const tableStartY = y;
-    const tableHeaders = [['Description', 'Quantity', 'Rate', 'Amount']];
+    // Client box
+    const clientBoxY = 65;
+    doc.setFillColor(...colors.light);
+    doc.rect(margin, clientBoxY, W - margin * 2, 35);
+    
+    doc.setTextColor(...colors.text);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('BILL TO', margin + 10, clientBoxY + 10);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.setTextColor(...colors.muted);
+    doc.text(data.clientName, margin + 10, clientBoxY + 25);
+    
+    if (data.clientAddress) {
+      doc.text(data.clientAddress, margin + 10, clientBoxY + 35);
+    }
+    if (data.clientEmail) {
+      doc.text(data.clientEmail, margin + 10, clientBoxY + 45);
+    }
+
+    // Table
+    const tableStartY = clientBoxY + 45;
+    const tableHeaders = [
+      { content: 'Description', styles: { cellWidth: 'auto', halign: 'left' } },
+      { content: 'Qty', styles: { cellWidth: 30, halign: 'center' } },
+      { content: 'Rate', styles: { cellWidth: 40, halign: 'right' } },
+      { content: 'Amount', styles: { cellWidth: 50, halign: 'right' } }
+    ];
+    
     const tableData = data.items.map(item => [
       item.description,
       item.quantity.toString(),
@@ -190,161 +147,165 @@ class PDFService {
     ]);
 
     autoTable(doc, {
-      head: tableHeaders,
+      head: tableHeaders.map(h => h.content),
       body: tableData,
       startY: tableStartY,
       margin: { left: margin, right: margin },
-      theme: 'grid',
+      theme: 'striped',
       headStyles: {
         fillColor: colors.primary,
         textColor: colors.white,
         fontStyle: 'bold',
-        fontSize: 9,
+        fontSize: 10,
+        cellPadding: 8,
       },
       bodyStyles: {
         fillColor: colors.white,
         textColor: colors.text,
         fontSize: 9,
-        cellPadding: 8,
+        cellPadding: 10,
+        lineColor: colors.muted,
+        lineWidth: 0.5,
       },
       alternateRowStyles: {
         fillColor: colors.light,
       },
-      columnStyles: {
-        0: { cellWidth: 'auto' },
-        1: { cellWidth: 30, halign: 'center' },
-        2: { cellWidth: 40, halign: 'right' },
-        3: { cellWidth: 40, halign: 'right' },
-      },
+      columnStyles: tableHeaders.reduce((acc, h, index) => ({
+        ...acc,
+        [index]: h.styles
+      }), {}),
     });
 
     const finalY = (doc as any).lastAutoTable.finalY || tableStartY + 100;
-    y = finalY;
+    let y = finalY + 20;
 
-    // Totals section
-    const totalsWidth = 120;
+    // Totals
+    const totalsWidth = 150;
     const totalsX = W - margin - totalsWidth;
 
     doc.setFillColor(...colors.light);
-    doc.rect(totalsX - 5, y, totalsWidth + 5, 40);
+    doc.rect(totalsX - 10, y - 10, totalsWidth + 10, 80);
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.setTextColor(...colors.muted);
-    doc.text('Subtotal', totalsX, y + 10);
     doc.setTextColor(...colors.text);
-    doc.text(this.fmt(data.subtotal), W - margin - 10, y + 10, { align: 'right' });
-    y += 15;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('Subtotal:', totalsX, y);
+    doc.text(this.fmt(data.subtotal), W - margin - 15, y, { align: 'right' });
+    y += 20;
 
     if (data.tax && data.taxRate) {
-      doc.setTextColor(...colors.muted);
-      doc.text(`VAT (${data.taxRate}%)`, totalsX, y);
-      doc.setTextColor(...colors.text);
-      doc.text(this.fmt(data.tax), W - margin - 10, y, { align: 'right' });
-      y += 15;
+      doc.text('VAT (' + data.taxRate + '%):', totalsX, y);
+      doc.text(this.fmt(data.tax), W - margin - 15, y, { align: 'right' });
+      y += 20;
     }
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
-    doc.setTextColor(...colors.text);
-    doc.text('TOTAL', totalsX, y);
+    doc.setFontSize(14);
+    doc.setTextColor(...colors.primary);
+    doc.text('TOTAL:', totalsX, y);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.text(this.fmt(data.total), W - margin - 10, y, { align: 'right' });
-    y += 20;
+    doc.setFontSize(18);
+    doc.text(this.fmt(data.total), W - margin - 15, y, { align: 'right' });
+    y += 30;
 
     // Payment status
     if (data.amountPaid !== undefined) {
-      const statusColor = data.balance === 0 ? [34, 197, 94] : colors.muted;
+      const isPaid = data.balance === 0;
+      const statusColor = isPaid ? colors.success : colors.warning;
+      const statusText = isPaid ? 'PAID IN FULL' : 'PARTIAL PAYMENT';
+      
       doc.setFillColor(...statusColor);
-      doc.rect(margin, y, W - margin * 2, 25);
-
+      doc.rect(margin, y - 10, W - margin * 2, 40);
+      
       doc.setTextColor(...colors.white);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10);
-      const statusText = data.balance === 0 ? 'PAID IN FULL' : 'PARTIAL PAYMENT';
-      doc.text(statusText, margin + 10, y + 8);
+      doc.setFontSize(12);
+      doc.text(statusText, margin + 15, y + 5);
       
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.text(`Amount Paid: ${this.fmt(data.amountPaid)}`, margin + 10, y + 18);
-      doc.text(`Balance Due: ${this.fmt(data.balance)}`, W - margin - 10, y + 26);
-      y += 35;
+      doc.setFontSize(10);
+      doc.text('Amount Paid: ' + this.fmt(data.amountPaid), margin + 15, y + 20);
+      doc.text('Balance Due: ' + this.fmt(data.balance), margin + 15, y + 30);
+      y += 50;
     }
 
-    // Banking details
+    // Banking
     if (data.bankingDetails?.bank) {
       doc.setFillColor(...colors.light);
-      doc.rect(margin, y, W - margin * 2, 60);
-
+      doc.rect(margin, y - 10, W - margin * 2, 60);
+      
       doc.setTextColor(...colors.primary);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10);
-      doc.text('Banking Details', margin + 10, y + 10);
+      doc.setFontSize(11);
+      doc.text('Banking Details', margin + 15, y);
       
-      doc.setTextColor(...colors.muted);
+      doc.setTextColor(...colors.text);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
-      const bankDetails = [
-        `Bank: ${data.bankingDetails.bank}`,
-        `Account: ${data.bankingDetails.account}`,
-        `Branch: ${data.bankingDetails.branch}`,
-        `Type: ${data.bankingDetails.type}`,
+      const bankInfo = [
+        'Bank: ' + data.bankingDetails.bank,
+        'Account: ' + data.bankingDetails.account,
+        'Branch: ' + data.bankingDetails.branch,
+        'Type: ' + data.bankingDetails.type,
       ];
       if (data.bankingDetails.reference) {
-        bankDetails.push(`Reference: ${data.bankingDetails.reference}`);
+        bankInfo.push('Reference: ' + data.bankingDetails.reference);
       }
 
-      let bankY = y + 25;
-      bankDetails.forEach(detail => {
-        doc.text(detail, margin + 10, bankY);
-        bankY += 6;
+      let bankY = y + 20;
+      bankInfo.forEach(info => {
+        doc.text(info, margin + 15, bankY);
+        bankY += 8;
       });
-
       y += 70;
     }
 
     // Notes
     if (data.customField1 || data.customField2) {
       doc.setFillColor(...colors.light);
-      doc.rect(margin, y, W - margin * 2, 40);
-
+      doc.rect(margin, y - 10, W - margin * 2, 40);
+      
       doc.setTextColor(...colors.primary);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10);
-      doc.text('Additional Information', margin + 10, y + 10);
-
-      doc.setTextColor(...colors.muted);
+      doc.setFontSize(11);
+      doc.text('Notes', margin + 15, y);
+      
+      doc.setTextColor(...colors.text);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
-      let notesY = y + 25;
       
+      let notesY = y + 20;
       if (data.customField1) {
-        doc.text(data.customField1, margin + 10, notesY);
-        notesY += 6;
+        doc.text(data.customField1, margin + 15, notesY);
+        notesY += 12;
       }
       if (data.customField2) {
-        doc.text(data.customField2, margin + 10, notesY);
+        doc.text(data.customField2, margin + 15, notesY);
       }
       y += 50;
     }
 
     // Footer
-    const footerY = H - 30;
+    const footerY = H - 40;
     doc.setFillColor(...colors.primary);
-    doc.rect(margin, footerY, W - margin * 2, 2);
-
+    doc.rect(0, footerY, W, 40);
+    
     doc.setTextColor(...colors.white);
     doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text('Thank you for your business', margin + 10, footerY + 15);
+    
+    doc.setFont('helvetica', 'italic');
     doc.setFontSize(8);
-    doc.text('Thank you for your business', margin + 10, footerY + 8, { align: 'center' });
+    doc.setTextColor(...colors.accent);
+    doc.text(data.businessName, W - margin - 10, footerY + 28, { align: 'right' });
 
     return doc;
   }
 
   downloadInvoicePDF(data: InvoicePDFData, filename?: string) {
     const doc = this.generateInvoicePDF(data);
-    doc.save(`${filename || `invoice-${data.invoiceNumber}.pdf`}`);
+    doc.save(filename || 'invoice-' + data.invoiceNumber + '.pdf');
   }
 
   previewInvoicePDF(data: InvoicePDFData) {

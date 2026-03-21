@@ -77,7 +77,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           .order('due_date', { ascending: true }),
         supabase
           .from('commitments')
-          .select('id, commitment_type, status, requested_at, invoice_id, invoices(number), details')
+          .select('id, type, status, requested_at, invoice_id, invoice_number, details')
           .eq('status', 'pending')
           .order('requested_at', { ascending: false })
           .limit(20),
@@ -142,8 +142,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         dispute: 'Dispute',
       };
       for (const c of commitments) {
-        const invNum = (c as any).invoices?.number || 'Invoice';
-        const typeLabel = commitLabels[c.commitment_type] || c.commitment_type;
+        const invNum = (c as any).invoice_number || 'Invoice';
+        const typeLabel = commitLabels[(c as any).type] || (c as any).type;
         generated.push({
           id: `commitment-${c.id}`,
           title: `New commitment: ${typeLabel}`,

@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 export interface Notification {
   id: string;
@@ -62,25 +63,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     isLoading: true,
   });
   const [notifications, setNotifications] = useState<Notification[]>(defaultNotifications);
-  const [notificationsLoaded, setNotificationsLoaded] = useState(false);
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const generateNotifications = useCallback(async () => {
     try {
-      const { data: invoices } = await supabase
-        .from('invoices')
-        .select('id, number, amount, status, due_date, client_id, clients(name)')
-        .in('status', ['sent', 'overdue'])
-        .order('due_date', { ascending: true });
+      // Fetch invoices, commitments, and recent comms in parallel
+      const [invoiceRes, commitmentRes, commsRes] = await Promise.all([
+        supabase
+          .from('invoices')
+          .select('id, number, amount, status, due_date, client_id, clients(name)')
+          .in('status', ['sent', 'overdue'])
+          .order('due_date', { ascending: true }),
+        supabase
+          .from('commitments')
+          .select('id, commitment_type, status, requested_at, invoice_id, invoices(number), details')
+          .eq('status', 'pending')
+          .order('requested_at', { ascending: false })
+          .limit(20),
+        supabase
+          .from('communication_logs')
+          .select('id, type, status, sent_at, invoice_id, invoices(number), recipient_email')
+          .order('sent_at', { ascending: false })
+          .limit(10),
+      ]);
 
-      if (!invoices || invoices.length === 0) {
-        setNotifications([]);
-        return;
-      }
+      const invoices = invoiceRes.data || [];
+      const commitments = commitmentRes.data || [];
+      const comms = commsRes.data || [];
 
       const now = new Date();
       now.setHours(0, 0, 0, 0);
       const generated: Notification[] = [];
 
+      // ── Invoice-based notifications ──
       for (const inv of invoices) {
         const due = new Date(inv.due_date);
         due.setHours(0, 0, 0, 0);
@@ -117,6 +133,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }
 
+      // ── Pending commitment notifications ──
+      const commitLabels: Record<string, string> = {
+        full_payment: 'Full Payment',
+        payment_plan: 'Payment Plan',
+        extension: 'Extension',
+        already_paid: 'Already Paid',
+        dispute: 'Dispute',
+      };
+      for (const c of commitments) {
+        const invNum = (c as any).invoices?.number || 'Invoice';
+        const typeLabel = commitLabels[c.commitment_type] || c.commitment_type;
+        generated.push({
+          id: `commitment-${c.id}`,
+          title: `New commitment: ${typeLabel}`,
+          desc: `${invNum} — awaiting your review`,
+          time: timeAgo(c.requested_at),
+          read: false,
+        });
+      }
+
+      // ── Recent communication notifications (last 24h) ──
+      const oneDayAgo = Date.now() - 86400000;
+      for (const log of comms) {
+        if (new Date(log.sent_at).getTime() < oneDayAgo) continue;
+        const invNum = (log as any).invoices?.number || '';
+        const typeLabel = log.type === 'reminder' ? 'Reminder' : log.type === 'followup' ? 'Follow-up' : log.type === 'invoice' ? 'Invoice' : 'Email';
+        const statusLabel = log.status === 'delivered' ? 'delivered' : log.status === 'bounced' ? 'bounced!' : 'sent';
+        generated.push({
+          id: `comm-${log.id}`,
+          title: `${typeLabel} ${statusLabel}`,
+          desc: `${invNum ? invNum + ' — ' : ''}${log.recipient_email || ''}`,
+          time: timeAgo(log.sent_at),
+          read: false,
+        });
+      }
+
       const dismissed = getDismissedIds();
       setNotifications(generated.filter(n => !dismissed.has(n.id)));
     } catch {
@@ -146,16 +198,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => subscription.unsubscribe();
   }, []);
 
-  // Generate notifications when authenticated
+  // Real-time subscriptions + polling for notifications
   useEffect(() => {
-    if (auth.isAuthenticated && !notificationsLoaded) {
-      generateNotifications();
-      setNotificationsLoaded(true);
-    }
     if (!auth.isAuthenticated) {
-      setNotificationsLoaded(false);
+      // Clean up when logged out
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+      return;
     }
-  }, [auth.isAuthenticated, notificationsLoaded, generateNotifications]);
+
+    // Initial fetch
+    generateNotifications();
+
+    // Poll every 30 seconds as a reliable fallback
+    pollRef.current = setInterval(generateNotifications, 30_000);
+
+    // Supabase Realtime: listen for changes on key tables
+    const channel = supabase
+      .channel('notifications-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' }, () => {
+        generateNotifications();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'commitments' }, () => {
+        generateNotifications();
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'communication_logs' }, () => {
+        generateNotifications();
+      })
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      supabase.removeChannel(channel);
+    };
+  }, [auth.isAuthenticated, generateNotifications]);
 
   const signOut = async () => {
     await supabase.auth.signOut();

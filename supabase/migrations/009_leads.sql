@@ -25,6 +25,7 @@ begin
 end;
 $$ language plpgsql;
 
+drop trigger if exists leads_updated_at on public.leads;
 create trigger leads_updated_at
   before update on public.leads
   for each row

@@ -207,7 +207,7 @@ const DashboardPage: React.FC = () => {
     const reminderBeforeRules = reminderRules.filter((r: any) => r.enabled && r.triggerType === 'before');
     const reminderDaysBefore = reminderBeforeRules.length > 0
       ? reminderBeforeRules.map((r: any) => r.triggerDays as number)
-      : [3]; // default: 3 days before
+      : [1]; // default: 1 day before
 
     for (const inv of [...dueSoonInvoices, ...upcomingInvoices]) {
       const due = new Date(inv.dueDate);

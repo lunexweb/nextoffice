@@ -134,17 +134,25 @@ serve(async (req) => {
           hasHistory = (count ?? 0) > 1;
         } catch (_) { /* score fetch failed, use defaults */ }
 
-        // ── 5. Check recent communication logs to avoid duplicates ────────
-        const checkSince = new Date(today.getTime() - 3 * 86400000).toISOString(); // last 3 days
-        const { data: recentLogs } = await supabaseAdmin
+        // ── 5. Check today's communication logs to avoid duplicates ────────
+        const todayStart = new Date(today).toISOString();
+        const { data: todayLogs } = await supabaseAdmin
           .from('communication_logs')
           .select('type, sent_at')
           .eq('invoice_id', invoice.id)
           .in('type', ['reminder', 'followup'])
-          .gte('sent_at', checkSince);
+          .gte('sent_at', todayStart);
 
-        const recentReminderSent = recentLogs?.some(l => l.type === 'reminder');
-        const recentFollowUpSent = recentLogs?.some(l => l.type === 'followup');
+        const reminderSentToday = todayLogs?.some(l => l.type === 'reminder');
+        const followUpSentToday = todayLogs?.some(l => l.type === 'followup');
+
+        // Count total follow-ups sent (for score drop logic)
+        const { data: followUpLogs } = await supabaseAdmin
+          .from('communication_logs')
+          .select('id')
+          .eq('invoice_id', invoice.id)
+          .eq('type', 'followup');
+        const totalFollowUpsSent = followUpLogs?.length ?? 0;
 
         // Check total reminders sent (to respect max_reminders_per_invoice)
         const { data: allLogs } = await supabaseAdmin
@@ -158,11 +166,14 @@ serve(async (req) => {
 
         const commitmentLink = `${siteUrl}/invoice/${invoice.number}/commitment`;
 
-        // ── 6. Send reminder (invoice due in 1–7 days) ────────────────────
-        if (!isOverdue && daysUntilDue >= 1 && daysUntilDue <= 7 && !recentReminderSent) {
+        // ── 6. Send reminders ──────────────────────────────────────────────
+        // 1st reminder: 1 day before due date
+        // 2nd reminder: on the due date
+        const shouldSendReminder = !isOverdue && !reminderSentToday && (daysUntilDue === 1 || daysUntilDue === 0);
+        if (shouldSendReminder) {
           const subject = daysUntilDue === 1
             ? `⚠️ Invoice ${invoice.number} Due Tomorrow`
-            : `🔔 Invoice ${invoice.number} Due in ${daysUntilDue} Days`;
+            : `� Invoice ${invoice.number} Due Today`;
 
           const emailHtml = buildReminderHtml({
             recipientName: client.name,
@@ -202,9 +213,16 @@ serve(async (req) => {
           }
         }
 
-        // ── 7. Send follow-up (invoice overdue) ───────────────────────────
-        if (isOverdue && daysOverdue >= 1 && !recentFollowUpSent) {
-          const subject = `🚨 Invoice ${invoice.number} is ${daysOverdue} Day${daysOverdue !== 1 ? 's' : ''} Overdue`;
+        // ── 7. Send follow-ups (invoice overdue) ──────────────────────────
+        // 1st follow-up: 1 day after due date
+        // 2nd follow-up onwards: every 2 days (day 3, 5, 7, 9…)
+        const isFollowUpDay = daysOverdue === 1 || (daysOverdue >= 3 && (daysOverdue - 1) % 2 === 0);
+        if (isOverdue && isFollowUpDay && !followUpSentToday) {
+          const followUpNumber = daysOverdue === 1 ? 1 : Math.floor((daysOverdue - 1) / 2) + 1;
+          const scoreDropping = followUpNumber >= 2;
+          const subject = daysOverdue === 1
+            ? `⚠️ Invoice ${invoice.number} — 1 Day Overdue`
+            : `🚨 Invoice ${invoice.number} is ${daysOverdue} Day${daysOverdue !== 1 ? 's' : ''} Overdue`;
 
           const emailHtml = buildFollowUpHtml({
             recipientName: client.name,
@@ -216,6 +234,7 @@ serve(async (req) => {
             businessName,
             clientScore,
             hasHistory,
+            followUpNumber,
           });
 
           try {
@@ -369,18 +388,26 @@ function buildFollowUpHtml(p: {
   businessName: string;
   clientScore: number;
   hasHistory: boolean;
+  followUpNumber: number;
 }): string {
+  const scoreDropping = p.followUpNumber >= 2;
   const currentLevel = getLevelLabel(p.clientScore);
   const currentColor = getLevelColor(p.clientScore);
-  const missScore = Math.max(0, p.clientScore - 10);
+  const penalty = scoreDropping ? 10 : 0;
+  const missScore = Math.max(0, p.clientScore - penalty);
   const missLevel = getLevelLabel(missScore);
   const missColor = getLevelColor(missScore);
   const missDown = missLevel !== currentLevel;
   const missTag = missDown ? ' <span style="background:#fee2e2;color:#991b1b;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;">LEVEL DOWN ↓</span>' : '';
 
-  const scoreSection = p.hasHistory ? `
+  // 1st follow-up: gentle warning. 2nd+: score is actively dropping.
+  const scoreSection = !scoreDropping && p.hasHistory ? `
+      <div style="background:#fff7ed;padding:16px 20px;border-radius:8px;margin:20px 0;border:1px solid #fed7aa;">
+        <p style="margin:0 0 6px;color:#c2410c;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Payment Overdue</p>
+        <p style="margin:0;color:#9a3412;font-size:13px;">Your score hasn’t been affected yet, but continued non-payment will start reducing your reliability score with <strong>${p.businessName}</strong>.</p>
+      </div>` : p.hasHistory && scoreDropping ? `
       <div style="background:#fef2f2;padding:16px 20px;border-radius:8px;margin:20px 0;border:1px solid #fecaca;">
-        <p style="margin:0 0 6px;color:#dc2626;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">⚠️ Score at Risk</p>
+        <p style="margin:0 0 6px;color:#dc2626;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">⚠️ Score Dropping</p>
         <table style="width:100%;border-collapse:collapse;">
           <tr>
             <td style="width:44%;text-align:center;background:#fff1f2;border-radius:6px;padding:8px 4px;">

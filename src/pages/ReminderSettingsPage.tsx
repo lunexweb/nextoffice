@@ -63,15 +63,15 @@ const ReminderSettingsPage: React.FC = () => {
       },
       {
         id: '2',
-        name: 'First Reminder',
+        name: '1st Reminder',
         enabled: true,
-        triggerDays: 3,
+        triggerDays: 1,
         triggerType: 'before',
         emailTemplate: 'reminder',
       },
       {
         id: '3',
-        name: 'Due Date Reminder',
+        name: '2nd Reminder (Due Date)',
         enabled: true,
         triggerDays: 0,
         triggerType: 'on',
@@ -79,19 +79,19 @@ const ReminderSettingsPage: React.FC = () => {
       },
       {
         id: '4',
-        name: 'Overdue Follow-up',
+        name: '1st Follow-up',
         enabled: true,
-        triggerDays: 3,
+        triggerDays: 1,
         triggerType: 'after',
         emailTemplate: 'overdue',
       },
       {
         id: '5',
-        name: 'Final Notice',
+        name: 'Ongoing Follow-ups',
         enabled: true,
-        triggerDays: 14,
+        triggerDays: 2,
         triggerType: 'after',
-        emailTemplate: 'final',
+        emailTemplate: 'overdue',
       },
     ],
     emailTemplates: {
@@ -320,10 +320,11 @@ Best regards,
             </p>
             <ul className="text-sm text-amber-800 mt-2 space-y-1 ml-4">
               <li>• <strong>March 15</strong> - Initial invoice sent</li>
-              <li>• <strong>March 27</strong> - First reminder (3 days before)</li>
-              <li>• <strong>March 30</strong> - Due date reminder</li>
-              <li>• <strong>April 2</strong> - Overdue follow-up (3 days after)</li>
-              <li>• <strong>April 13</strong> - Final notice (14 days after)</li>
+              <li>• <strong>March 29</strong> - 1st Reminder (1 day before)</li>
+              <li>• <strong>March 30</strong> - 2nd Reminder (due date)</li>
+              <li>• <strong>March 31</strong> - 1st Follow-up (1 day after)</li>
+              <li>• <strong>April 2</strong> - 2nd Follow-up — <em>score starts dropping</em></li>
+              <li>• <strong>April 4, 6, 8…</strong> - Every 2 days until paid</li>
             </ul>
           </div>
         </div>

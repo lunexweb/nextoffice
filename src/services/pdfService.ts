@@ -128,7 +128,7 @@ class PDFService {
     
     // Subtle background for details
     doc.setFillColor(...lightGray);
-    doc.roundedRect(detailsBoxX, detailsBoxY, detailsBoxW, 65, 8);
+    doc.roundedRect(detailsBoxX, detailsBoxY, detailsBoxW, 65, 8, 8);
 
     // Invoice title
     doc.setTextColor(...primary);
@@ -270,7 +270,7 @@ class PDFService {
     
     // Modern totals box with rounded corners
     doc.setFillColor(...lightGray);
-    doc.roundedRect(totalsBoxX - 10, yPos - 10, totalsBoxW + 20, 80, 8);
+    doc.roundedRect(totalsBoxX - 10, yPos - 10, totalsBoxW + 20, 80, 8, 8);
     
     // Subtotal
     doc.setFont('helvetica', 'normal');
@@ -298,7 +298,7 @@ class PDFService {
 
     // Total with accent background
     doc.setFillColor(...primary);
-    doc.roundedRect(totalsBoxX - 5, yPos - 8, totalsBoxW + 10, 20, 6);
+    doc.roundedRect(totalsBoxX - 5, yPos - 8, totalsBoxW + 10, 20, 6, 6);
     
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
@@ -329,7 +329,7 @@ class PDFService {
       
       if (data.balance === 0) {
         doc.setFillColor(...success);
-        doc.roundedRect(totalsBoxX + 10, yPos - 5, totalsBoxW - 20, 15, 4);
+        doc.roundedRect(totalsBoxX + 10, yPos - 5, totalsBoxW - 20, 15, 4, 4);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(11);
         doc.setTextColor(...white);

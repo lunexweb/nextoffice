@@ -32,6 +32,7 @@ const InvoicesPage: React.FC = () => {
   const [shareMenuInvoiceId, setShareMenuInvoiceId] = useState<string | null>(null);
   const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
   const [moreMenuInvoiceId, setMoreMenuInvoiceId] = useState<string | null>(null);
+  const [resendingInvoiceId, setResendingInvoiceId] = useState<string | null>(null);
   const { commitments, markInstallmentPaid } = useCommitments();
   const [installmentPayDates, setInstallmentPayDates] = useState<Record<number, string>>({});
   const [paymentType, setPaymentType] = useState<PaymentType>('full');
@@ -396,6 +397,85 @@ const InvoicesPage: React.FC = () => {
         body: `Project marked as completed — payment now due`,
         recipient_email: clientEmail,
       }).catch(console.error);
+    }
+  };
+
+  const handleResendInvoice = async (invoice: any) => {
+    setResendingInvoiceId(invoice.id);
+    try {
+      const client = clients.find(c => c.id === invoice.clientId);
+      
+      if (!client?.email) {
+        toast({
+          title: 'Error',
+          description: 'Client email address is required',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Determine email type based on invoice status
+      let emailType = 'reminder';
+      let subject = `Invoice ${invoice.number}`;
+      
+      if (invoice.status === 'overdue') {
+        emailType = 'reminder';
+        subject = `Overdue Invoice ${invoice.number}`;
+      } else if (invoice.status === 'paid') {
+        emailType = 'invoice';
+        subject = `Invoice ${invoice.number} (Paid)`;
+      } else if (invoice.status === 'sent') {
+        emailType = 'reminder';
+        subject = `Invoice ${invoice.number} Reminder`;
+      }
+
+      const { data, error } = await supabase.functions.invoke('send-invoice', {
+        body: {
+          invoiceId: invoice.id,
+          recipientEmail: client.email,
+          recipientName: client.name || invoice.clientName,
+          invoiceNumber: invoice.number,
+          amount: invoice.amount,
+          dueDate: invoice.dueDate,
+          businessName: businessProfile?.businessName,
+        },
+      });
+
+      console.log('Resend invoice response:', { data, error });
+
+      if (error) {
+        const errMsg = error?.message || error?.context?.body || String(error);
+        throw new Error(errMsg);
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      // Log communication
+      communicationService.create({
+        invoice_id: invoice.id,
+        client_id: invoice.clientId,
+        type: emailType,
+        status: 'sent',
+        subject: subject,
+        body: `Invoice resent with status: ${invoice.status}`,
+        recipient_email: client.email,
+      }).catch(console.error);
+
+      toast({
+        title: 'Invoice Resent!',
+        description: `Invoice ${invoice.number} (${invoice.status}) sent to ${client.email}`,
+      });
+    } catch (err: any) {
+      console.error('Failed to resend invoice:', err);
+      toast({
+        title: 'Failed to Resend',
+        description: err?.message || 'Unknown error. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setResendingInvoiceId(null);
     }
   };
 
@@ -1186,6 +1266,18 @@ const InvoicesPage: React.FC = () => {
                   <button onClick={() => previewInvoicePDF(getPDFData())} disabled={generating} className="p-1.5 rounded text-muted-foreground hover:text-blue-600 transition-colors" title="Preview"><Eye size={14} /></button>
                   <button onClick={() => downloadInvoicePDF(getPDFData())} disabled={generating} className="p-1.5 rounded text-muted-foreground hover:text-primary transition-colors" title="Download"><Download size={14} /></button>
                   <button onClick={() => { const link = `${window.location.origin}/invoice/${inv.number}/commitment`; navigator.clipboard.writeText(link); }} className="p-1.5 rounded text-muted-foreground hover:text-foreground transition-colors" title="Copy Link"><Copy size={14} /></button>
+                  <button 
+                    onClick={() => handleResendInvoice(inv)} 
+                    disabled={resendingInvoiceId === inv.id}
+                    className="p-1.5 rounded text-muted-foreground hover:text-orange-600 transition-colors" 
+                    title="Resend Invoice"
+                  >
+                    {resendingInvoiceId === inv.id ? (
+                      <div className="w-3.5 h-3.5 border-2 border-orange-600 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Repeat size={14} />
+                    )}
+                  </button>
                   {inv.status !== 'paid' && <button onClick={() => handleMarkAsPaid(inv.id)} className="ml-auto px-2 py-1 rounded text-[10px] font-semibold bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition-colors">{inv.amountPaid > 0 ? 'Record Payment' : 'Mark Paid'}</button>}
                   {inv.status !== 'paid' && <button onClick={() => handleEditInvoice(inv)} className="p-1.5 rounded text-muted-foreground hover:text-amber-600 transition-colors" title="Edit"><Pencil size={14} /></button>}
                   <button onClick={() => handleDeleteInvoice(inv.id)} className="p-1.5 rounded text-muted-foreground hover:text-red-500 transition-colors" title="Delete"><Trash2 size={14} /></button>
@@ -1426,7 +1518,26 @@ const InvoicesPage: React.FC = () => {
                           <Mail size={13} /> Gmail
                         </button>
                         <button
-                          className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium text-muted-foreground hover:bg-accent transition-colors border-t border-border"
+                          className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium text-orange-700 hover:bg-orange-50 transition-colors border-t border-border"
+                          onClick={() => {
+                            handleResendInvoice(inv);
+                            setShareMenuInvoiceId(null);
+                          }}
+                          disabled={resendingInvoiceId === inv.id}
+                        >
+                          {resendingInvoiceId === inv.id ? (
+                            <>
+                              <div className="w-3 h-3 border-2 border-orange-600 border-t-transparent rounded-full animate-spin" />
+                              Resending...
+                            </>
+                          ) : (
+                            <>
+                              <Repeat size={13} /> Resend
+                            </>
+                          )}
+                        </button>
+                        <button
+                          className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium text-muted-foreground hover:bg-accent transition-colors"
                           onClick={() => {
                             navigator.clipboard.writeText(`${window.location.origin}/invoice/${inv.number}/commitment`);
                             setShareMenuInvoiceId(null);

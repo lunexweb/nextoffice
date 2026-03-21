@@ -423,6 +423,8 @@ const ClientCommitmentPage: React.FC = () => {
       else if (effectiveType === 'extension') type = 'extension';
       else if (effectiveType === 'already_paid') type = 'already_paid';
       else if (effectiveType === 'project_completion') type = 'project_completion';
+      else if (effectiveType === 'pay_now') type = 'pay_now';
+      else if (effectiveType === 'pay_on_due_date') type = 'pay_on_due_date';
 
       let details: Record<string, any> = {};
       if (type === 'payment_plan' && installments && paymentDates) {

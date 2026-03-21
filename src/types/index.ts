@@ -212,7 +212,7 @@ export interface CommunicationAnalytics {
   deliveryRate: number;
 }
 
-export type CommitmentType = 'deposit' | 'payment_plan' | 'extension' | 'already_paid' | 'project_completion';
+export type CommitmentType = 'deposit' | 'payment_plan' | 'extension' | 'already_paid' | 'project_completion' | 'pay_now' | 'pay_on_due_date';
 export type CommitmentStatus = 'pending' | 'approved' | 'declined' | 'completed' | 'cancelled';
 
 export interface Commitment {

@@ -80,6 +80,12 @@ const commitmentConfig: Record<string, { title: string; accentColor: string; hea
     headerBg: '#064e3b',
     nextSteps: 'Thank you for committing to full payment. Please proceed with the transfer using the banking details on the invoice. Contact the business directly once payment is made.',
   },
+  pay_on_due_date: {
+    title: 'Payment Commitment Confirmed',
+    accentColor: '#0ea5e9',
+    headerBg: '#0c4a6e',
+    nextSteps: 'Your commitment to pay on the due date has been recorded. You\'ll receive a reminder as the due date approaches. Please ensure payment is made on the agreed date.',
+  },
 };
 
 function formatDate(dateStr: string): string {

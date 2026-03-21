@@ -11,6 +11,8 @@ const TYPE_CONFIG: Record<CommitmentType, { label: string; Icon: any; dot: strin
   extension:         { label: 'Extension',          Icon: Clock,       dot: 'bg-amber-500',  badge: 'bg-amber-100 text-amber-800' },
   already_paid:      { label: 'Already Paid',       Icon: FileCheck,   dot: 'bg-purple-500', badge: 'bg-purple-100 text-purple-800' },
   project_completion:{ label: 'On Completion',      Icon: TrendingUp,  dot: 'bg-indigo-500', badge: 'bg-indigo-100 text-indigo-800' },
+  pay_now:           { label: 'Pay Now',            Icon: DollarSign,  dot: 'bg-green-500',  badge: 'bg-green-100 text-green-800' },
+  pay_on_due_date:   { label: 'Pay on Due Date',    Icon: Calendar,    dot: 'bg-sky-500',    badge: 'bg-sky-100 text-sky-800' },
 };
 
 const STATUS_CONFIG: Record<CommitmentStatus, { label: string; bar: string; badge: string }> = {

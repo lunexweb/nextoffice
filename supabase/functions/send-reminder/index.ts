@@ -328,7 +328,7 @@ serve(async (req) => {
               <a href="${landingPageUrl}" target="_blank" style="display:inline-block;text-decoration:none;">
                 <table cellpadding="0" cellspacing="0" style="display:inline-table;">
                   <tr><td style="background-color:#0f172a;padding:10px 24px;border-radius:8px;">
-                    <span style="color:#ffffff;font-size:14px;font-weight:700;letter-spacing:-0.3px;">Trail<span style="color:#3b82f6;">bill.com</span></span>
+                    <span style="color:#ffffff;font-size:14px;font-weight:700;letter-spacing:-0.3px;">Trailbill<span style="color:#64748b;font-size:10px;font-weight:400;">.com</span></span>
                   </td></tr>
                 </table>
               </a>

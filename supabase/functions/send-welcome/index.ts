@@ -50,7 +50,7 @@ serve(async (req) => {
         <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
             <div style="font-size: 48px; margin-bottom: 10px;">🎉</div>
-            <h1 style="color: white; margin: 0; font-size: 26px;">Welcome to Trailbill.com!</h1>
+            <h1 style="color: white; margin: 0; font-size: 26px;">Welcome to Trailbill<span style="font-size:17px;color:rgba(255,255,255,0.55);font-weight:400;">.com</span>!</h1>
             <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 15px;">Your account has been created</p>
           </div>
 
@@ -58,7 +58,7 @@ serve(async (req) => {
             <p style="font-size: 16px; margin-bottom: 20px;">Hi ${userName},</p>
 
             <p style="font-size: 16px; margin-bottom: 20px;">
-              Your Trailbill.com account has been set up and is ready to use. Here are your login details:
+              Your Trailbill<span style="font-size:12px;color:#6366f1;">.com</span> account has been set up and is ready to use. Here are your login details:
             </p>
 
             <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea;">
@@ -86,12 +86,12 @@ serve(async (req) => {
             <div style="text-align: center; margin: 30px 0;">
               <a href="${siteUrl}"
                  style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
-                Login to Trailbill.com
+                Login to Trailbill<span style="font-size:12px;font-weight:400;opacity:0.7;">.com</span>
               </a>
             </div>
 
             <div style="background: #f0f9ff; padding: 15px 20px; border-radius: 8px; margin: 20px 0;">
-              <strong style="color: #0369a1;">What you can do with Trailbill.com:</strong>
+              <strong style="color: #0369a1;">What you can do with Trailbill<span style="font-size:11px;color:#6366f1;">.com</span>:</strong>
               <ul style="margin: 10px 0 0; padding-left: 20px; font-size: 14px; color: #374151;">
                 <li style="margin-bottom: 6px;">📄 Create and send professional invoices</li>
                 <li style="margin-bottom: 6px;">👥 Manage your clients</li>
@@ -106,7 +106,7 @@ serve(async (req) => {
 
             <p style="font-size: 14px; color: #6c757d; margin-top: 10px;">
               Best regards,<br>
-              <strong>${businessName} via Trailbill.com</strong><br>
+              <strong>${businessName} via Trailbill<span style="font-size:11px;color:#6366f1;">.com</span></strong><br>
               <a href="mailto:${businessEmail}" style="color: #667eea;">${businessEmail}</a>
             </p>
           </div>

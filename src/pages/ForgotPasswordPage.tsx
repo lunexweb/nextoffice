@@ -168,7 +168,7 @@ const ForgotPasswordPage: React.FC = () => {
         </div>
 
         <p className="text-center text-[11px] text-muted-foreground/50 mt-5">
-          Built in South Africa · © 2026 Trailbill.com
+          Built in South Africa · © 2026 Trailbill<span className="text-primary/50">.com</span>
         </p>
       </motion.div>
     </div>

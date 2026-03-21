@@ -569,7 +569,7 @@ serve(async (req) => {
                 <table cellpadding="0" cellspacing="0" style="display:inline-table;">
                   <tr>
                     <td style="background-color:#0f172a;padding:10px 24px;border-radius:8px;">
-                      <span style="color:#ffffff;font-size:14px;font-weight:700;letter-spacing:-0.3px;">Trail<span style="color:#3b82f6;">bill.com</span></span>
+                      <span style="color:#ffffff;font-size:14px;font-weight:700;letter-spacing:-0.3px;">Trailbill<span style="color:#64748b;font-size:10px;font-weight:400;">.com</span></span>
                     </td>
                   </tr>
                 </table>
@@ -680,7 +680,7 @@ serve(async (req) => {
       </td></tr>
 
       <tr><td style="padding:20px 40px;text-align:center;background-color:#f8fafc;border-top:1px solid #e2e8f0;">
-        <span style="color:#cbd5e1;font-size:12px;font-weight:700;">Trail<span style="color:#3b82f6;">bill.com</span></span>
+        <span style="color:#cbd5e1;font-size:12px;font-weight:700;">Trailbill<span style="color:#64748b;font-size:10px;font-weight:400;">.com</span></span>
         <p style="margin:6px 0 0;color:#cbd5e1;font-size:11px;">Smart invoicing &amp; payment commitments</p>
       </td></tr>
 

@@ -967,9 +967,9 @@ const InvoicesPage: React.FC = () => {
                       rel="noopener noreferrer"
                       className="inline-block px-4 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-md font-medium hover:from-blue-700 hover:to-indigo-700 transition-all text-[11px]"
                     >
-                      Try Trailbill.com Free →
+                      Try Trailbill<span className="text-[9px] opacity-70">.com</span> Free →
                     </a>
-                    <p className="text-[9px] text-[#B0BAC9] mt-1">Powered by Trailbill.com</p>
+                    <p className="text-[9px] text-[#B0BAC9] mt-1">Powered by Trailbill<span className="text-[7px] text-[#C0C8D4]">.com</span></p>
                   </div>
                 </div>
               </NOCard>

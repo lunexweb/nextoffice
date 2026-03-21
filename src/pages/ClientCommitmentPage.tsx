@@ -678,7 +678,7 @@ const ClientCommitmentPage: React.FC = () => {
               href="/"
               className="flex items-center justify-center gap-2 w-full px-6 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold text-sm shadow-md hover:shadow-lg transition-all hover:from-blue-700 hover:to-indigo-700"
             >
-              Get Trailbill.com →
+              Get Trailbill<span className="text-xs opacity-70">.com</span> →
             </a>
           </div>
         </div>
@@ -1312,10 +1312,10 @@ const ClientCommitmentPage: React.FC = () => {
             rel="noopener noreferrer"
             className="inline-block px-4 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-md font-medium hover:from-blue-700 hover:to-indigo-700 transition-all text-xs"
           >
-            Get Trailbill.com →
+            Get Trailbill<span className="text-[10px] opacity-70">.com</span> →
           </a>
           <p className="text-[10px] text-gray-300 mt-2">
-            Powered by Trailbill.com
+            Powered by Trailbill<span className="text-[8px] text-gray-400">.com</span>
           </p>
         </div>
       </div>

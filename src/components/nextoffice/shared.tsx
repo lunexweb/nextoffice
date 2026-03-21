@@ -35,10 +35,9 @@ export const CountUp: React.FC<{ value: number; prefix?: string }> = ({ value, p
 };
 
 export const Logo: React.FC<{ className?: string }> = ({ className = 'text-2xl' }) => (
-  <div className={`flex items-center gap-0.5 ${className}`}>
-    <span className="font-serif font-bold text-foreground">Next</span>
-    <span className="font-serif text-primary">Office</span>
-    <span className="w-1.5 h-1.5 rounded-full bg-primary mt-3 ml-0.5" />
+  <div className={`flex items-baseline gap-0 ${className}`}>
+    <span className="font-serif font-bold tracking-tight text-foreground">Trailbill</span>
+    <span className="font-sans font-medium text-[0.55em] text-primary/70 ml-[1px]">.com</span>
   </div>
 );
 

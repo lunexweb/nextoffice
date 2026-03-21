@@ -70,14 +70,14 @@ class PDFService {
 
     // Professional color palette
     const colors = {
-      primary: [41, 67, 111],
-      secondary: [71, 85, 105],
-      accent: [59, 130, 246],
-      text: [30, 41, 59],
-      muted: [148, 163, 184],
+      primary: [41, 67, 111],     // Deep blue
+      secondary: [71, 85, 105],   // Muted blue
+      accent: [59, 130, 246],    // Bright blue
+      text: [30, 41, 59],      // Dark slate
+      muted: [148, 163, 184],   // Light gray
       white: [255, 255, 255],
-      light: [248, 250, 252],
-      gold: [212, 175, 55]
+      light: [248, 250, 252],    // Very light gray
+      gold: [212, 175, 55]      // Gold accent
     };
 
     // Header with professional design
@@ -211,12 +211,12 @@ class PDFService {
         fillColor: colors.light,
       },
       columnStyles: {
-        0: { cellWidth: 'auto' },
-        1: { cellWidth: 30, halign: 'center' },
-        2: { cellWidth: 40, halign: 'right' },
-        3: { cellWidth: 40, halign: 'right' },
+        0: { cellWidth: 'auto' },  // Description
+        1: { cellWidth: 30, halign: 'center' },  // Quantity
+        2: { cellWidth: 40, halign: 'right' },  // Rate
+        3: { cellWidth: 40, halign: 'right' },  // Amount
       },
-    });
+    } as any);
 
     const finalY = (doc as any).lastAutoTable.finalY || tableStartY + 100;
     y = finalY;
@@ -262,7 +262,7 @@ class PDFService {
       doc.setTextColor(...colors.white);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10);
-      const statusText = data.balance === 0 ? 'PAID IN FULL' : 'PARTIAL PAYMENT';
+      const statusText = data.balance === 0 ? 'PAID IN FULL' : `PARTIAL PAYMENT`;
       doc.text(statusText, margin + 10, y + 8);
       
       doc.setFont('helvetica', 'normal');
@@ -344,7 +344,7 @@ class PDFService {
 
   downloadInvoicePDF(data: InvoicePDFData, filename?: string) {
     const doc = this.generateInvoicePDF(data);
-    doc.save(`${filename || `invoice-${data.invoiceNumber}.pdf`}`);
+    doc.save(`${filename || `invoice-${data.invoiceNumber}.pdf`});
   }
 
   previewInvoicePDF(data: InvoicePDFData) {

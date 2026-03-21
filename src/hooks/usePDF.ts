@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { pdfService, InvoicePDFData } from '@/services/pdfService';
+import pdfService, { InvoicePDFData } from '@/services/pdfService';
 import { useToast } from './use-toast';
 
 const loadLogoAsDataUrl = (url: string): Promise<string | undefined> =>

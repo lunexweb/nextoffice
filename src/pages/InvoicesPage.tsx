@@ -202,6 +202,7 @@ const InvoicesPage: React.FC = () => {
         setEmailSent(false);
 
         if (shareTarget !== 'save') {
+          const recipientEmail = clients.find(c => c.id === formData.clientId)?.email || '';
           communicationService.create({
             invoice_id: newInvoice.id,
             client_id: formData.clientId,
@@ -209,6 +210,7 @@ const InvoicesPage: React.FC = () => {
             status: 'sent',
             subject: `Invoice ${newInvoice.number}`,
             body: `Sent via ${shareTarget === 'email' ? 'Email' : 'WhatsApp'}`,
+            recipient_email: recipientEmail,
           }).catch(console.error);
         }
       }
@@ -322,6 +324,7 @@ const InvoicesPage: React.FC = () => {
 
     // Log communication
     const typeLabel = paymentType === 'deposit' ? 'Deposit' : paymentType === 'balance' ? 'Balance' : 'Payment';
+    const paidClientEmail = clients.find(c => c.id === invoice.clientId)?.email || '';
     communicationService.create({
       invoice_id: invoice.id,
       client_id: invoice.clientId,
@@ -329,6 +332,7 @@ const InvoicesPage: React.FC = () => {
       status: 'sent',
       subject: `${typeLabel} received for ${invoice.number}`,
       body: `${typeLabel} of ${formatCurrency(paymentAmount)} recorded on ${paymentDate}${paymentAmount !== expectedAmount ? ` (expected ${formatCurrency(expectedAmount)})` : ''}`,
+      recipient_email: paidClientEmail,
     }).catch(console.error);
 
     const clientEmail = clients.find(c => c.id === invoice.clientId)?.email;
@@ -388,6 +392,7 @@ const InvoicesPage: React.FC = () => {
         status: 'sent',
         subject: `Project completed for ${invoice.number}`,
         body: `Project marked as completed — payment now due`,
+        recipient_email: clientEmail,
       }).catch(console.error);
     }
   };
@@ -492,6 +497,7 @@ const InvoicesPage: React.FC = () => {
                     status: 'sent',
                     subject: `Invoice ${createdInvoiceNumber}`,
                     body: 'Sent via Email',
+                    recipient_email: client?.email || '',
                   }).catch(console.error);
                 } catch (err) {
                   console.error('Failed to send email:', err);
@@ -1372,7 +1378,7 @@ const InvoicesPage: React.FC = () => {
                             const w = window.open('about:blank', '_blank');
                             if (w) w.location.href = `https://wa.me/?text=${text}`;
                             setShareMenuInvoiceId(null);
-                            communicationService.create({ invoice_id: inv.id, client_id: inv.clientId, type: 'reminder', status: 'sent', subject: `Invoice ${inv.number} re-shared`, body: `Re-shared via WhatsApp` }).catch(console.error);
+                            communicationService.create({ invoice_id: inv.id, client_id: inv.clientId, type: 'reminder', status: 'sent', subject: `Invoice ${inv.number} re-shared`, body: `Re-shared via WhatsApp`, recipient_email: clients.find(c => c.id === inv.clientId)?.email || '' }).catch(console.error);
                           }}
                         >
                           <MessageCircle size={13} /> WhatsApp
@@ -1386,7 +1392,7 @@ const InvoicesPage: React.FC = () => {
                             const w = window.open('about:blank', '_blank');
                             if (w) w.location.href = `https://mail.google.com/mail/?view=cm&su=${subject}&body=${body}`;
                             setShareMenuInvoiceId(null);
-                            communicationService.create({ invoice_id: inv.id, client_id: inv.clientId, type: 'reminder', status: 'sent', subject: `Invoice ${inv.number} re-shared`, body: `Re-shared via Gmail` }).catch(console.error);
+                            communicationService.create({ invoice_id: inv.id, client_id: inv.clientId, type: 'reminder', status: 'sent', subject: `Invoice ${inv.number} re-shared`, body: `Re-shared via Gmail`, recipient_email: clients.find(c => c.id === inv.clientId)?.email || '' }).catch(console.error);
                           }}
                         >
                           <Mail size={13} /> Gmail

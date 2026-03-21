@@ -83,9 +83,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           .limit(20),
         supabase
           .from('communication_logs')
-          .select('id, type, status, sent_at, invoice_id, invoices(number), recipient_email')
+          .select('id, type, status, sent_at, invoice_id, recipient_email, subject, invoices(number, client_id, clients(name))')
           .order('sent_at', { ascending: false })
-          .limit(10),
+          .limit(50),
       ]);
 
       const invoices = invoiceRes.data || [];
@@ -153,17 +153,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
       }
 
-      // ── Recent communication notifications (last 24h) ──
-      const oneDayAgo = Date.now() - 86400000;
+      // ── Communication log notifications (all recent — "Sent Items") ──
+      const commTypeLabels: Record<string, string> = {
+        initial_invoice: 'Invoice sent',
+        invoice: 'Invoice sent',
+        reminder: 'Reminder sent',
+        followup: 'Follow-up sent',
+        project_completed: 'Project completed email sent',
+        payment_received: 'Payment confirmation sent',
+        commitment_confirmation: 'Commitment confirmation sent',
+      };
       for (const log of comms) {
-        if (new Date(log.sent_at).getTime() < oneDayAgo) continue;
-        const invNum = (log as any).invoices?.number || '';
-        const typeLabel = log.type === 'reminder' ? 'Reminder' : log.type === 'followup' ? 'Follow-up' : log.type === 'invoice' ? 'Invoice' : 'Email';
-        const statusLabel = log.status === 'delivered' ? 'delivered' : log.status === 'bounced' ? 'bounced!' : 'sent';
+        const invData = (log as any).invoices;
+        const invNum = invData?.number || '';
+        const clientName = invData?.clients?.name || '';
+        const typeLabel = commTypeLabels[log.type] || 'Email sent';
+        const statusSuffix = log.status === 'delivered' ? ' ✓' : log.status === 'bounced' ? ' ✗ bounced' : '';
+
+        // Build a rich description: "INV-001 → John Doe (john@email.com)"
+        const parts: string[] = [];
+        if (invNum) parts.push(invNum);
+        if (clientName) parts.push(clientName);
+        if (log.recipient_email) parts.push(log.recipient_email);
+        const desc = parts.length > 0
+          ? (invNum && clientName
+            ? `${invNum} → ${clientName}${log.recipient_email ? ` (${log.recipient_email})` : ''}`
+            : parts.join(' — '))
+          : (log.subject || 'Email');
+
         generated.push({
           id: `comm-${log.id}`,
-          title: `${typeLabel} ${statusLabel}`,
-          desc: `${invNum ? invNum + ' — ' : ''}${log.recipient_email || ''}`,
+          title: `${typeLabel}${statusSuffix}`,
+          desc,
           time: timeAgo(log.sent_at),
           read: false,
         });

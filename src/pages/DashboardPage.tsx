@@ -12,6 +12,7 @@ import {
   Send,
   ChevronRight,
   Bell,
+  Briefcase,
 } from 'lucide-react';
 import { useDashboard, useCommunications, useBusinessProfile } from '@/hooks';
 import { emailService } from '@/services/emailService';
@@ -57,6 +58,7 @@ const getActivityIcon = (action: string) => {
     followup:                   { icon: Mail,          color: 'text-purple-500' },
     confirmation:               { icon: CheckCircle,   color: 'text-green-500' },
     payment_received:           { icon: CheckCircle,   color: 'text-green-500' },
+    project_completed:          { icon: Briefcase,     color: 'text-indigo-500' },
     commitment_confirmation:    { icon: Clock,         color: 'text-blue-500' },
     commitment_pending:         { icon: Clock,         color: 'text-amber-500' },
     commitment_approved:        { icon: CheckCircle,   color: 'text-green-500' },
@@ -326,6 +328,7 @@ const DashboardPage: React.FC = () => {
           status: 'sent',
           subject: `Follow-up: Invoice ${invoice.documentNumber} (${daysOverdue}d overdue)`,
           body: `Auto follow-up sent to ${invoice.clientEmail}`,
+          recipient_email: invoice.clientEmail || '',
         });
 
         // Send owner notification (digest-style, not the client-facing email)
@@ -715,7 +718,19 @@ const DashboardPage: React.FC = () => {
                       <p className="text-[10px] sm:text-xs text-muted-foreground flex-shrink-0">{formatRelativeTime(activity.timestamp)}</p>
                     </div>
                     <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
-                      {activity.action.replace(/_/g, ' ')} · {activity.documentNumber}
+                      {({
+                        initial_invoice: 'Invoice sent',
+                        reminder: 'Reminder sent',
+                        followup: 'Follow-up sent',
+                        project_completed: 'Project completed',
+                        payment_received: 'Payment confirmed',
+                        commitment_confirmation: 'Commitment confirmed',
+                        commitment_pending: 'Commitment received',
+                        commitment_approved: 'Commitment approved',
+                        commitment_declined: 'Commitment declined',
+                        commitment_completed: 'Commitment completed',
+                        commitment_cancelled: 'Commitment cancelled',
+                      } as Record<string, string>)[activity.action] || activity.action.replace(/_/g, ' ')} · {activity.documentNumber}
                     </p>
                   </div>
                 </div>

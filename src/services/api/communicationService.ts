@@ -61,6 +61,7 @@ export const communicationService = {
     status: string;
     subject: string;
     body?: string;
+    recipient_email?: string;
   }): Promise<CommunicationLog> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');

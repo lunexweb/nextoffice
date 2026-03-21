@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Home, Users, FileText, Settings, LogOut, ChevronLeft, ChevronRight, Bell, X, MessageSquare, TrendingUp, Handshake } from 'lucide-react';
@@ -6,6 +6,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useApp } from '@/contexts/AppContext';
 import { useBusinessProfile } from '@/hooks';
 import { ThemeToggle } from '@/components/nextoffice/shared';
+import { useToast } from '@/hooks/use-toast';
 
 const navItems = [
   { id: 'home', icon: Home, label: 'Home', path: '/app' },
@@ -29,12 +30,34 @@ const AppLayout: React.FC = () => {
   const { isDark, toggle } = useTheme();
   const { signOut, notifications, dismissNotification } = useApp();
   const { businessProfile } = useBusinessProfile();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 768);
+  const prevNotifIdsRef = useRef<Set<string>>(new Set());
+
+  // Toast popup for new communication notifications
+  useEffect(() => {
+    const currentIds = new Set(notifications.map(n => n.id));
+    const prevIds = prevNotifIdsRef.current;
+
+    // Only fire toasts after the initial load (prevIds is populated)
+    if (prevIds.size > 0) {
+      for (const n of notifications) {
+        if (!prevIds.has(n.id) && n.id.startsWith('comm-')) {
+          toast({
+            title: n.title,
+            description: n.desc,
+          });
+        }
+      }
+    }
+
+    prevNotifIdsRef.current = currentIds;
+  }, [notifications, toast]);
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth < 768);

@@ -111,7 +111,7 @@ const LandingPage: React.FC = () => {
         </motion.h1>
         <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2 }}
           className="relative z-10 text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mb-10 leading-relaxed">
-          NextOffice automates payment follow-ups within relationship-friendly boundaries you define once. Never chase money again.
+          Trailbill.com automates payment follow-ups within relationship-friendly boundaries you define once. Never chase money again.
         </motion.p>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.3 }}
           className="relative z-10 flex flex-col sm:flex-row gap-3">
@@ -153,7 +153,7 @@ const LandingPage: React.FC = () => {
         </motion.div>
         <motion.p initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}
           className="mt-14 text-center font-serif italic text-lg md:text-xl text-primary/80 max-w-3xl mx-auto">
-          "Your employees know their salary arrives on time. NextOffice gives you that same certainty — from your clients."
+          "Your employees know their salary arrives on time. Trailbill.com gives you that same certainty — from your clients."
         </motion.p>
       </section>
 
@@ -306,7 +306,7 @@ const LandingPage: React.FC = () => {
               </div>
               <div className="rounded-xl bg-muted/50 border border-border p-4 mb-8 flex flex-col sm:flex-row justify-between items-center text-sm gap-2">
                 <span className="text-muted-foreground">Average SA business loses <strong className="text-foreground">R15,000+/month</strong> to late payments</span>
-                <span className="font-bold text-primary whitespace-nowrap">NextOffice: R299/mo</span>
+                <span className="font-bold text-primary whitespace-nowrap">Trailbill.com: R299/mo</span>
               </div>
               <button onClick={() => document.getElementById('join')?.scrollIntoView({ behavior: 'smooth' })}
                 className="w-full py-4 rounded-xl bg-gradient-to-r from-primary to-blue-600 text-white font-semibold text-lg hover:opacity-90 transition-all active:scale-[0.98] shadow-lg shadow-primary/25">
@@ -344,7 +344,7 @@ const LandingPage: React.FC = () => {
               className="rounded-2xl border border-border bg-card shadow-xl p-6 sm:p-8 relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-blue-500" />
               <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-                <input type="hidden" name="subject" value="New NextOffice Access Request" />
+                <input type="hidden" name="subject" value="New Trailbill.com Access Request" />
                 {[
                   { label: 'Full Name', key: 'fullName', name: 'name', type: 'text', placeholder: 'e.g. John Mokoena' },
                   { label: 'Business Name', key: 'businessName', name: 'business_name', type: 'text', placeholder: 'e.g. Mokoena IT Solutions', optional: true },
@@ -406,7 +406,7 @@ const LandingPage: React.FC = () => {
 
       {/* ── Sticky WhatsApp Button ── */}
       <a
-        href="https://wa.me/27789992503?text=Hi%2C%20I'm%20interested%20in%20NextOffice"
+        href="https://wa.me/27789992503?text=Hi%2C%20I'm%20interested%20in%20Trailbill.com"
         target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-[#25D366] rounded-full flex items-center justify-center shadow-lg shadow-[#25D366]/30 hover:scale-110 transition-transform duration-200 active:scale-95"
@@ -430,7 +430,7 @@ const LandingPage: React.FC = () => {
             <button onClick={() => document.getElementById('join')?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-foreground transition-colors">Pricing</button>
             <button onClick={() => navigate('/signin')} className="hover:text-foreground transition-colors">Sign In</button>
           </div>
-          <p className="text-xs text-muted-foreground/60">Built in South Africa · © 2026 NextOffice</p>
+          <p className="text-xs text-muted-foreground/60">Built in South Africa · © 2026 Trailbill.com</p>
         </div>
       </footer>
     </div>

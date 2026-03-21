@@ -105,9 +105,9 @@ serve(async (req) => {
     }
     if (!businessName) businessName = 'Your Business';
 
-    const fromEmail = Deno.env.get('FROM_EMAIL') ?? 'invoices@nextoffice.app';
-    const siteUrl = Deno.env.get('SITE_URL') ?? 'https://nextoffice.app';
-    const landingPageUrl = Deno.env.get('LANDING_PAGE_URL') ?? 'https://nextoffice.app';
+    const fromEmail = Deno.env.get('FROM_EMAIL') ?? 'invoices@trailbill.com';
+    const siteUrl = Deno.env.get('SITE_URL') ?? 'https://trailbill.com';
+    const landingPageUrl = Deno.env.get('LANDING_PAGE_URL') ?? 'https://trailbill.com';
     const portalLink = `${siteUrl}/invoice/${invoiceNumber}/commitment`;
     const subject = `Project Completed — Invoice ${invoiceNumber} Now Due`;
     const formattedAmount = `R${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -304,7 +304,7 @@ serve(async (req) => {
           <!-- Footer -->
           <tr>
             <td style="padding:20px 40px 28px;text-align:center;">
-              <p style="margin:0;color:#94a3b8;font-size:11px;">Powered by <a href="${landingPageUrl}" style="color:#6366f1;text-decoration:none;font-weight:600;">NextOffice</a></p>
+              <p style="margin:0;color:#94a3b8;font-size:11px;">Powered by <a href="${landingPageUrl}" style="color:#6366f1;text-decoration:none;font-weight:600;">Trailbill.com</a></p>
             </td>
           </tr>
         </table>

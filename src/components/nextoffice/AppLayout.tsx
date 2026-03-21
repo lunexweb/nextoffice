@@ -62,8 +62,8 @@ const AppLayout: React.FC = () => {
         className="h-screen fixed left-0 top-0 z-50 border-r border-border bg-card hidden md:flex flex-col transition-colors duration-200"
       >
         <div className="p-4 flex items-center gap-3 overflow-hidden h-16 border-b border-border">
-          <div className="min-w-[32px] h-8 w-8 rounded bg-primary flex items-center justify-center text-primary-foreground font-serif font-bold text-sm flex-shrink-0">N</div>
-          {!collapsed && <span className="font-serif font-bold text-xl whitespace-nowrap">NextOffice</span>}
+          <div className="min-w-[32px] h-8 w-8 rounded bg-primary flex items-center justify-center text-primary-foreground font-serif font-bold text-sm flex-shrink-0">T</div>
+          {!collapsed && <span className="font-serif font-bold text-xl whitespace-nowrap">Trailbill.com</span>}
         </div>
 
         <nav className="flex-1 p-2 space-y-1 mt-4 overflow-hidden">

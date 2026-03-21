@@ -79,7 +79,7 @@ emailService.sendWelcomeEmail(params)
 ### **D) Complete File Structure** ✅
 
 ```
-NextOffice/
+Trailbill.com/
 │
 ├── src/
 │   ├── templates/
@@ -118,14 +118,14 @@ const result = await emailService.sendInitialInvoice({
   amount: 15000,
   dueDate: 'March 25, 2026',
   commitmentLink: 'http://localhost:5177/invoice/INV-001/commitment',
-  businessName: 'NextOffice',
-  businessEmail: 'hello@nextoffice.com',
+  businessName: 'Trailbill.com',
+  businessEmail: 'hello@Trailbill.com.com',
 });
 
 // Console output:
 // 📧 [MOCK EMAIL SENT]
 // To: client@example.com
-// Subject: Invoice INV-001 from NextOffice
+// Subject: Invoice INV-001 from Trailbill.com
 // Type: initial_invoice
 // Email ID: email_xxx
 ```
@@ -146,8 +146,8 @@ function InvoiceActions() {
       amount: 15000,
       dueDate: 'March 25, 2026',
       commitmentLink: window.location.origin + '/invoice/INV-001/commitment',
-      businessName: 'NextOffice',
-      businessEmail: 'hello@nextoffice.com',
+      businessName: 'Trailbill.com',
+      businessEmail: 'hello@Trailbill.com.com',
     });
     // Toast notification appears automatically
   };
@@ -174,8 +174,8 @@ await emailService.sendReminder({
   dueDate: 'March 25, 2026',
   daysUntilDue: 3,
   commitmentLink: 'http://localhost:5177/invoice/INV-001/commitment',
-  businessName: 'NextOffice',
-  businessEmail: 'hello@nextoffice.com',
+  businessName: 'Trailbill.com',
+  businessEmail: 'hello@Trailbill.com.com',
 });
 ```
 
@@ -190,8 +190,8 @@ await emailService.sendFollowUp({
   dueDate: 'March 25, 2026',
   daysOverdue: 5,
   commitmentLink: 'http://localhost:5177/invoice/INV-001/commitment',
-  businessName: 'NextOffice',
-  businessEmail: 'hello@nextoffice.com',
+  businessName: 'Trailbill.com',
+  businessEmail: 'hello@Trailbill.com.com',
   businessPhone: '+27 123 456 789', // Optional
 });
 ```
@@ -205,8 +205,8 @@ await emailService.sendWelcomeEmail({
   userEmail: 'newuser@example.com',
   temporaryPassword: 'TempPass123!',
   loginUrl: 'http://localhost:5177/signin',
-  businessName: 'NextOffice',
-  businessEmail: 'support@nextoffice.com',
+  businessName: 'Trailbill.com',
+  businessEmail: 'support@Trailbill.com.com',
 });
 ```
 
@@ -218,7 +218,7 @@ await emailService.sendWelcomeEmail({
 ```
 ┌─────────────────────────────────┐
 │   [Purple Header]               │
-│   NextOffice                    │
+│   Trailbill.com                    │
 ├─────────────────────────────────┤
 │                                 │
 │   New Invoice                   │
@@ -248,7 +248,7 @@ await emailService.sendWelcomeEmail({
 ```
 ┌─────────────────────────────────┐
 │   [Amber Header]                │
-│   NextOffice                    │
+│   Trailbill.com                    │
 ├─────────────────────────────────┤
 │                                 │
 │   Friendly Reminder             │
@@ -277,7 +277,7 @@ await emailService.sendWelcomeEmail({
 ```
 ┌─────────────────────────────────┐
 │   [Indigo Header]               │
-│   NextOffice                    │
+│   Trailbill.com                    │
 ├─────────────────────────────────┤
 │                                 │
 │   Payment Follow-Up             │
@@ -362,7 +362,7 @@ serve(async (req) => {
   const { to, subject, html } = await req.json()
 
   const { data, error } = await resend.emails.send({
-    from: 'NextOffice <noreply@yourdomain.com>',
+    from: 'Trailbill.com <noreply@yourdomain.com>',
     to: [to],
     subject: subject,
     html: html,
@@ -440,7 +440,7 @@ All email templates follow these principles:
 3. **Clear CTAs** - One primary action per email
 4. **Professional** - Maintains business credibility
 5. **Helpful Tone** - Supportive, not demanding
-6. **Branded** - Consistent with NextOffice identity
+6. **Branded** - Consistent with Trailbill.com identity
 
 ---
 

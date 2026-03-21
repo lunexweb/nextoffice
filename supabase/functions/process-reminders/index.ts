@@ -38,7 +38,7 @@ serve(async (req) => {
   }
 
   const resend = new ResendClient(resendApiKey);
-  const fromEmail = Deno.env.get('FROM_EMAIL') ?? 'invoices@nextoffice.app';
+  const fromEmail = Deno.env.get('FROM_EMAIL') ?? 'invoices@trailbill.com';
   const siteUrl = Deno.env.get('SITE_URL') ?? '';
 
   const today = new Date();

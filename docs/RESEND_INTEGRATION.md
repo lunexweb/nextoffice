@@ -1,7 +1,7 @@
 # Resend Integration Guide
 
 ## Overview
-This document outlines the complete Resend email integration for NextOffice, including email templates, service layer, and implementation details.
+This document outlines the complete Resend email integration for Trailbill.com, including email templates, service layer, and implementation details.
 
 ## Current Status: Mock Mode ✅
 
@@ -280,7 +280,7 @@ Create `.env.local`:
 ```env
 VITE_RESEND_API_KEY=re_xxxxxxxxxxxxx
 VITE_FROM_EMAIL=noreply@yourdomain.com
-VITE_FROM_NAME=NextOffice
+VITE_FROM_NAME=Trailbill.com
 ```
 
 ### Step 3: Create Supabase Edge Function
@@ -296,7 +296,7 @@ serve(async (req) => {
   const { to, subject, html } = await req.json()
 
   const { data, error } = await resend.emails.send({
-    from: 'NextOffice <noreply@yourdomain.com>',
+    from: 'Trailbill.com <noreply@yourdomain.com>',
     to: [to],
     subject: subject,
     html: html,

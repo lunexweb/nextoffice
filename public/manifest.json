@@ -1,6 +1,6 @@
 {
-  "name": "NextOffice",
-  "short_name": "NextOffice",
+  "name": "Trailbill.com",
+  "short_name": "Trailbill.com",
   "description": "Get paid on time without awkward chasing. Automates payment follow-ups within relationship-friendly boundaries.",
   "start_url": "/app",
   "display": "standalone",

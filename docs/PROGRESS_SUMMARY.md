@@ -1,4 +1,4 @@
-# NextOffice - Development Progress Summary
+# Trailbill.com - Development Progress Summary
 
 **Last Updated:** March 16, 2026  
 **Status:** Core Application Complete ✅
@@ -7,7 +7,7 @@
 
 ## 🎯 Project Overview
 
-NextOffice is a comprehensive invoice and client management system built with React, TypeScript, and Tailwind CSS. The application provides business owners with tools to manage clients, create invoices, track payments, monitor client reliability, and automate communications.
+Trailbill.com is a comprehensive invoice and client management system built with React, TypeScript, and Tailwind CSS. The application provides business owners with tools to manage clients, create invoices, track payments, monitor client reliability, and automate communications.
 
 ---
 
@@ -299,7 +299,7 @@ NextOffice is a comprehensive invoice and client management system built with Re
 src/
 ├── components/
 │   ├── ui/              # Reusable UI components
-│   └── nextoffice/      # App-specific components
+│   └── Trailbill.com/      # App-specific components
 ├── contexts/            # React Context providers
 ├── hooks/               # Custom React hooks
 ├── pages/               # Page components

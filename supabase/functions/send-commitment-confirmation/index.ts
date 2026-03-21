@@ -437,7 +437,7 @@ serve(async (req) => {
       nextSteps: 'Your commitment has been recorded. Our team will follow up shortly.',
     };
 
-    const fromEmail = Deno.env.get('FROM_EMAIL') ?? 'invoices@nextoffice.app';
+    const fromEmail = Deno.env.get('FROM_EMAIL') ?? 'invoices@trailbill.com';
 
     let businessName = requestData.businessName;
     if (!businessName && requestData.invoiceId) {
@@ -456,7 +456,7 @@ serve(async (req) => {
       }
     }
     if (!businessName) businessName = 'Your Business';
-    const landingPageUrl = Deno.env.get('LANDING_PAGE_URL') ?? 'https://nextoffice.app';
+    const landingPageUrl = Deno.env.get('LANDING_PAGE_URL') ?? 'https://trailbill.com';
     const subject = `${config.title} — Invoice ${invoiceNumber}`;
 
     const detailRows = buildDetailsRows(commitmentType, commitmentDetailsData, amount, config.accentColor);
@@ -561,7 +561,7 @@ serve(async (req) => {
             </td>
           </tr>
 
-          <!-- NextOffice footer -->
+          <!-- Trailbill.com footer -->
           <tr>
             <td style="padding:28px 40px;text-align:center;background-color:#f8fafc;">
               <p style="margin:0 0 14px;color:#94a3b8;font-size:12px;">Powered by</p>
@@ -569,7 +569,7 @@ serve(async (req) => {
                 <table cellpadding="0" cellspacing="0" style="display:inline-table;">
                   <tr>
                     <td style="background-color:#0f172a;padding:10px 24px;border-radius:8px;">
-                      <span style="color:#ffffff;font-size:14px;font-weight:700;letter-spacing:-0.3px;">Next<span style="color:#3b82f6;">Office</span></span>
+                      <span style="color:#ffffff;font-size:14px;font-weight:700;letter-spacing:-0.3px;">Trail<span style="color:#3b82f6;">bill.com</span></span>
                     </td>
                   </tr>
                 </table>
@@ -643,7 +643,7 @@ serve(async (req) => {
         detailLines = `<tr><td style="padding:8px 16px;color:#64748b;font-size:13px;">Claimed payment date</td><td style="padding:8px 16px;text-align:right;font-size:13px;font-weight:700;color:#0f172a;">${formatDate(data.paymentDate)}</td></tr>`;
       }
 
-      const siteUrl = Deno.env.get('SITE_URL') ?? 'https://app.nextoffice.app';
+      const siteUrl = Deno.env.get('SITE_URL') ?? 'https://app.trailbill.com';
       const dashboardUrl = `${siteUrl}/commitments`;
 
       const ownerEmailHtml = `<!DOCTYPE html>
@@ -680,7 +680,7 @@ serve(async (req) => {
       </td></tr>
 
       <tr><td style="padding:20px 40px;text-align:center;background-color:#f8fafc;border-top:1px solid #e2e8f0;">
-        <span style="color:#cbd5e1;font-size:12px;font-weight:700;">Next<span style="color:#3b82f6;">Office</span></span>
+        <span style="color:#cbd5e1;font-size:12px;font-weight:700;">Trail<span style="color:#3b82f6;">bill.com</span></span>
         <p style="margin:6px 0 0;color:#cbd5e1;font-size:11px;">Smart invoicing &amp; payment commitments</p>
       </td></tr>
 

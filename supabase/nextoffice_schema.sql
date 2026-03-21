@@ -1,5 +1,5 @@
 -- ============================================================
--- NextOffice — Complete Supabase Schema + RLS
+-- Trailbill.com — Complete Supabase Schema + RLS
 -- Copy & paste this entire file into the Supabase SQL Editor
 -- Run it once. Safe to re-run (uses IF NOT EXISTS / OR REPLACE).
 -- ============================================================

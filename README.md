@@ -1,6 +1,6 @@
-# NextOffice
+# Trailbill.com
 
-**Get paid on time without the chase.** NextOffice automates payment follow-ups within relationship-friendly boundaries.
+**Get paid on time without the chase.** Trailbill.com automates payment follow-ups within relationship-friendly boundaries.
 
 ![React](https://img.shields.io/badge/React-18-61dafb?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)
@@ -12,7 +12,7 @@
 
 ## Overview
 
-NextOffice is a comprehensive invoice and client management platform for small businesses. It provides tools to manage clients, create and send invoices, track payments, monitor client reliability scores, and automate email communications — all from a single dashboard.
+Trailbill.com is a comprehensive invoice and client management platform for small businesses. It provides tools to manage clients, create and send invoices, track payments, monitor client reliability scores, and automate email communications — all from a single dashboard.
 
 ### Key Features
 
@@ -55,8 +55,8 @@ NextOffice is a comprehensive invoice and client management platform for small b
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/<your-username>/nextoffice.git
-cd nextoffice
+git clone https://github.com/<your-username>/Trailbill.com.git
+cd Trailbill.com
 ```
 
 ### 2. Install dependencies
@@ -113,7 +113,7 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 src/
 ├── components/
 │   ├── ui/              # Reusable UI primitives (shadcn/ui)
-│   └── nextoffice/      # App-specific components
+│   └── Trailbill.com/      # App-specific components
 ├── config/              # API and app configuration
 ├── contexts/            # React Context providers (Auth, Theme)
 ├── data/                # Mock data for development

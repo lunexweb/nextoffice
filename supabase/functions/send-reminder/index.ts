@@ -104,9 +104,9 @@ serve(async (req) => {
     const isOverdue = daysOverdue && daysOverdue > 0;
     const accentColor = isOverdue ? '#ef4444' : '#f59e0b';
     const headerBg = isOverdue ? '#450a0a' : '#451a03';
-    const fromEmail = Deno.env.get('FROM_EMAIL') ?? 'invoices@nextoffice.app';
-    const siteUrl = Deno.env.get('SITE_URL') ?? 'https://nextoffice.app';
-    const landingPageUrl = Deno.env.get('LANDING_PAGE_URL') ?? 'https://nextoffice.app';
+    const fromEmail = Deno.env.get('FROM_EMAIL') ?? 'invoices@trailbill.com';
+    const siteUrl = Deno.env.get('SITE_URL') ?? 'https://trailbill.com';
+    const landingPageUrl = Deno.env.get('LANDING_PAGE_URL') ?? 'https://trailbill.com';
     const formattedDue = new Date(dueDate + (dueDate.includes('T') ? '' : 'T00:00:00')).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' });
     const formattedAmount = `R${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const displayClient = clientName || recipientName;
@@ -175,7 +175,7 @@ serve(async (req) => {
                   </td>
                 </tr>
               </table>
-              <p style="margin:0;color:#94a3b8;font-size:12px;text-align:center;">This is an automated notification from your NextOffice account.</p>
+              <p style="margin:0;color:#94a3b8;font-size:12px;text-align:center;">This is an automated notification from your Trailbill.com account.</p>
             </td>
           </tr>
         </table>
@@ -186,7 +186,7 @@ serve(async (req) => {
 </html>`;
 
       const ownerResult = await resend.sendEmail({
-        from: `${businessName} via NextOffice <${fromEmail}>`,
+        from: `${businessName} via Trailbill.com <${fromEmail}>`,
         to: recipientEmail,
         subject: ownerSubject,
         html: ownerHtml,
@@ -321,14 +321,14 @@ serve(async (req) => {
           <!-- Divider -->
           <tr><td style="padding:0 40px;"><div style="border-top:1px solid #e2e8f0;"></div></td></tr>
 
-          <!-- NextOffice footer -->
+          <!-- Trailbill.com footer -->
           <tr>
             <td style="padding:28px 40px;text-align:center;background-color:#f8fafc;">
               <p style="margin:0 0 14px;color:#94a3b8;font-size:12px;">Powered by</p>
               <a href="${landingPageUrl}" target="_blank" style="display:inline-block;text-decoration:none;">
                 <table cellpadding="0" cellspacing="0" style="display:inline-table;">
                   <tr><td style="background-color:#0f172a;padding:10px 24px;border-radius:8px;">
-                    <span style="color:#ffffff;font-size:14px;font-weight:700;letter-spacing:-0.3px;">Next<span style="color:#3b82f6;">Office</span></span>
+                    <span style="color:#ffffff;font-size:14px;font-weight:700;letter-spacing:-0.3px;">Trail<span style="color:#3b82f6;">bill.com</span></span>
                   </td></tr>
                 </table>
               </a>

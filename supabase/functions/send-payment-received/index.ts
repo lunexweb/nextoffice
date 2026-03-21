@@ -145,9 +145,9 @@ serve(async (req) => {
     }
     if (!businessName) businessName = 'Your Business';
 
-    const fromEmail = Deno.env.get('FROM_EMAIL') ?? 'invoices@nextoffice.app';
-    const siteUrl = Deno.env.get('SITE_URL') ?? 'https://nextoffice.app';
-    const landingPageUrl = Deno.env.get('LANDING_PAGE_URL') ?? 'https://nextoffice.app';
+    const fromEmail = Deno.env.get('FROM_EMAIL') ?? 'invoices@trailbill.com';
+    const siteUrl = Deno.env.get('SITE_URL') ?? 'https://trailbill.com';
+    const landingPageUrl = Deno.env.get('LANDING_PAGE_URL') ?? 'https://trailbill.com';
     const portalLink = `${siteUrl}/invoice/${invoiceNumber}/commitment`;
     const subject = `Payment Confirmed — Invoice ${invoiceNumber}`;
     const formattedDate = new Date(paymentDate + (paymentDate.includes('T') ? '' : 'T00:00:00')).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -276,14 +276,14 @@ serve(async (req) => {
           <!-- Divider -->
           <tr><td style="padding:0 40px;"><div style="border-top:1px solid #e2e8f0;"></div></td></tr>
 
-          <!-- NextOffice footer -->
+          <!-- Trailbill.com footer -->
           <tr>
             <td style="padding:28px 40px;text-align:center;background-color:#f8fafc;">
               <p style="margin:0 0 14px;color:#94a3b8;font-size:12px;">Powered by</p>
               <a href="${landingPageUrl}" target="_blank" style="display:inline-block;text-decoration:none;">
                 <table cellpadding="0" cellspacing="0" style="display:inline-table;">
                   <tr><td style="background-color:#0f172a;padding:10px 24px;border-radius:8px;">
-                    <span style="color:#ffffff;font-size:14px;font-weight:700;letter-spacing:-0.3px;">Next<span style="color:#3b82f6;">Office</span></span>
+                    <span style="color:#ffffff;font-size:14px;font-weight:700;letter-spacing:-0.3px;">Trail<span style="color:#3b82f6;">bill.com</span></span>
                   </td></tr>
                 </table>
               </a>

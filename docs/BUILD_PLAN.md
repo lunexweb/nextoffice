@@ -1,6 +1,6 @@
-# NextOffice Build Plan - Dashboard Clone
+# Trailbill.com Build Plan - Dashboard Clone
 
-**Goal:** Clone all functionality from the demo (client-harmony-hub-main) into NextOffice, building everything step-by-step with mock data first, then integrating Supabase at the end.
+**Goal:** Clone all functionality from the demo (client-harmony-hub-main) into Trailbill.com, building everything step-by-step with mock data first, then integrating Supabase at the end.
 
 ---
 
@@ -34,7 +34,7 @@
 ## 🚧 Phase 2: Core Dashboard Structure
 
 ### Step 2.1: AppLayout Component
-**File:** `src/components/nextoffice/AppLayout.tsx`
+**File:** `src/components/Trailbill.com/AppLayout.tsx`
 
 **Features to clone:**
 - Sidebar navigation with menu items
@@ -290,7 +290,7 @@
 - `skeleton.tsx` - Loading skeletons
 
 ### Step 10.2: Dashboard Components
-**Files:** `src/components/nextoffice/`
+**Files:** `src/components/Trailbill.com/`
 
 **Create:**
 - `StatCard.tsx` - Dashboard stat cards

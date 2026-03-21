@@ -1,7 +1,7 @@
 # Supabase Configuration File
 # For local development with Supabase CLI
 
-project_id = "nextoffice"
+project_id = "Trailbill.com"
 
 [api]
 # Port to use for the API URL.

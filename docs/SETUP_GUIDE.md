@@ -1,4 +1,4 @@
-# NextOffice Setup Guide
+# Trailbill.com Setup Guide
 
 ## Prerequisites
 
@@ -40,7 +40,7 @@ VITE_SITE_URL=http://localhost:5173
 1. Go to your Supabase project dashboard
 2. Navigate to SQL Editor
 3. Run the migration files in `supabase/migrations/` in order:
-   - `001_nextoffice_tables.sql`
+   - `001_Trailbill.com_tables.sql`
    - `002_commitment_system.sql`
    - `003_business_profiles.sql`
    - And so on...

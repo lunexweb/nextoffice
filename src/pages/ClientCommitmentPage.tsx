@@ -678,7 +678,7 @@ const ClientCommitmentPage: React.FC = () => {
               href="/"
               className="flex items-center justify-center gap-2 w-full px-6 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold text-sm shadow-md hover:shadow-lg transition-all hover:from-blue-700 hover:to-indigo-700"
             >
-              Get NextOffice →
+              Get Trailbill.com →
             </a>
           </div>
         </div>
@@ -1303,19 +1303,19 @@ const ClientCommitmentPage: React.FC = () => {
           </div>
         </NOCard>
 
-        {/* Footer - Powered by NextOffice */}
+        {/* Footer - Powered by Trailbill.com */}
         <div className="mt-4 mb-3 text-center">
           <p className="text-[11px] text-gray-400 mb-1.5">Love this experience?</p>
           <a
-            href="https://nextoffice.app"
+            href="https://trailbill.com"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-block px-4 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-md font-medium hover:from-blue-700 hover:to-indigo-700 transition-all text-xs"
           >
-            Get NextOffice →
+            Get Trailbill.com →
           </a>
           <p className="text-[10px] text-gray-300 mt-2">
-            Powered by NextOffice
+            Powered by Trailbill.com
           </p>
         </div>
       </div>

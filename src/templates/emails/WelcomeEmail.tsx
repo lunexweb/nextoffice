@@ -24,7 +24,7 @@ export const generateWelcomeEmailHTML = (props: WelcomeEmailProps): string => {
           <tr>
             <td style="background-color: #4F46E5; padding: 40px 40px 30px; text-align: center;">
               <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold;">
-                Welcome to NextOffice
+                Welcome to Trailbill.com
               </h1>
             </td>
           </tr>
@@ -40,7 +40,7 @@ export const generateWelcomeEmailHTML = (props: WelcomeEmailProps): string => {
               </p>
               
               <p style="margin: 0 0 30px; color: #4b5563; font-size: 16px; line-height: 1.6;">
-                Your NextOffice account has been created. You can now access the platform and start managing your invoices and client communications.
+                Your Trailbill.com account has been created. You can now access the platform and start managing your invoices and client communications.
               </p>
 
               <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f0f9ff; border-radius: 8px; padding: 24px; margin-bottom: 30px; border-left: 4px solid #3b82f6;">
@@ -84,7 +84,7 @@ export const generateWelcomeEmailHTML = (props: WelcomeEmailProps): string => {
 
               <div style="background-color: #ecfdf5; border-left: 4px solid #10b981; padding: 16px; border-radius: 4px; margin-bottom: 30px;">
                 <p style="margin: 0 0 8px; color: #065f46; font-size: 14px; font-weight: 600;">
-                  ✓ What you can do with NextOffice:
+                  ✓ What you can do with Trailbill.com:
                 </p>
                 <ul style="margin: 0; padding-left: 20px; color: #065f46; font-size: 14px; line-height: 1.8;">
                   <li>Send professional invoices with flexible payment options</li>
@@ -100,7 +100,7 @@ export const generateWelcomeEmailHTML = (props: WelcomeEmailProps): string => {
               
               <p style="margin: 0; color: #4b5563; font-size: 14px; line-height: 1.6;">
                 Welcome aboard!<br>
-                <strong>The NextOffice Team</strong>
+                <strong>The Trailbill.com Team</strong>
               </p>
             </td>
           </tr>
@@ -108,7 +108,7 @@ export const generateWelcomeEmailHTML = (props: WelcomeEmailProps): string => {
           <tr>
             <td style="background-color: #f9fafb; padding: 30px 40px; border-top: 1px solid #e5e7eb;">
               <p style="margin: 0 0 8px; color: #6b7280; font-size: 12px; text-align: center;">
-                NextOffice
+                Trailbill.com
               </p>
               <p style="margin: 0; color: #6b7280; font-size: 12px; text-align: center;">
                 ${props.businessEmail}

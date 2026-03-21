@@ -440,6 +440,7 @@ serve(async (req) => {
     const fromEmail = Deno.env.get('FROM_EMAIL') ?? 'invoices@trailbill.com';
 
     let businessName = requestData.businessName;
+    let logoUrl = '';
     if (!businessName && requestData.invoiceId) {
       const { data: inv } = await supabaseAdmin
         .from('invoices')
@@ -449,10 +450,11 @@ serve(async (req) => {
       if (inv?.user_id) {
         const { data: profile } = await supabaseAdmin
           .from('profiles')
-          .select('business_name')
+          .select('business_name, logo_url')
           .eq('id', inv.user_id)
           .single();
         businessName = profile?.business_name || 'Your Business';
+        if (profile?.logo_url) logoUrl = profile.logo_url;
       }
     }
     if (!businessName) businessName = 'Your Business';
@@ -480,6 +482,7 @@ serve(async (req) => {
           <!-- Header bar -->
           <tr>
             <td style="background-color:${config.headerBg};padding:32px 40px;text-align:center;">
+              ${logoUrl ? `<img src="${logoUrl}" alt="${businessName}" style="max-height:48px;max-width:160px;margin-bottom:8px;" />` : ''}
               <p style="margin:0 0 4px;color:rgba(255,255,255,0.6);font-size:12px;letter-spacing:2px;text-transform:uppercase;font-weight:600;">Payment Commitment</p>
               <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.3px;">${config.title}</h1>
             </td>

@@ -94,13 +94,15 @@ serve(async (req) => {
     const missTag = missLevelDown ? '<span style="display:inline-block;margin-left:4px;padding:1px 6px;background-color:#fee2e2;color:#991b1b;font-size:9px;font-weight:700;border-radius:20px;">LEVEL DOWN ↓</span>' : '';
 
     let businessName = requestData.businessName;
+    let logoUrl = '';
     if (!businessName && invoiceUserId) {
       const { data: profile } = await serviceClient
         .from('profiles')
-        .select('business_name')
+        .select('business_name, logo_url')
         .eq('id', invoiceUserId)
         .single();
       businessName = profile?.business_name || 'Your Business';
+      if (profile?.logo_url) logoUrl = profile.logo_url;
     }
     if (!businessName) businessName = 'Your Business';
 
@@ -128,6 +130,7 @@ serve(async (req) => {
           <!-- Header -->
           <tr>
             <td style="background-color:#1e293b;padding:32px 40px;text-align:center;">
+              ${logoUrl ? `<img src="${logoUrl}" alt="${businessName}" style="max-height:48px;max-width:160px;margin-bottom:8px;" />` : ''}
               <p style="margin:0 0 4px;color:rgba(255,255,255,0.6);font-size:12px;letter-spacing:2px;text-transform:uppercase;font-weight:600;">Invoice</p>
               <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">${businessName}</h1>
             </td>

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Mail, Send, Eye, CheckCircle, AlertCircle, Clock, Search } from 'lucide-react';
+import { Mail, Send, Eye, CheckCircle, AlertCircle, Clock, Search, Calendar, X } from 'lucide-react';
 import { NOCard } from '@/components/nextoffice/shared';
 import { useCommunications, useClients, useInvoices } from '@/hooks';
 import type { CommunicationStatus } from '@/types';
@@ -67,6 +67,7 @@ const CommunicationsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterDate, setFilterDate] = useState<string>('');
 
   const getClientName = (clientId: string) => clients.find(c => c.id === clientId)?.name || '—';
   const getInvoiceNumber = (invoiceId: string) => invoices.find(i => i.id === invoiceId)?.number || '—';
@@ -79,8 +80,9 @@ const CommunicationsPage: React.FC = () => {
       getInvoiceNumber(log.invoiceId).toLowerCase().includes(q);
     const matchesType = filterType === 'all' || log.type === filterType;
     const matchesStatus = filterStatus === 'all' || log.status === filterStatus;
-    return matchesSearch && matchesType && matchesStatus;
-  }), [logs, searchTerm, filterType, filterStatus, clients, invoices]);
+    const matchesDate = !filterDate || new Date(log.sentAt).toISOString().slice(0, 10) === filterDate;
+    return matchesSearch && matchesType && matchesStatus && matchesDate;
+  }), [logs, searchTerm, filterType, filterStatus, filterDate, clients, invoices]);
 
   const grouped = useMemo(() => {
     const groups: { label: string; items: typeof filteredLogs }[] = [];
@@ -196,6 +198,23 @@ const CommunicationsPage: React.FC = () => {
               <option value="failed">Failed</option>
               <option value="bounced">Bounced</option>
             </select>
+            <div className="relative">
+              <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground w-3.5 h-3.5 pointer-events-none" />
+              <input
+                type="date"
+                value={filterDate}
+                onChange={(e) => setFilterDate(e.target.value)}
+                className="pl-8 pr-2 py-1.5 text-sm rounded border border-border bg-background outline-none focus:ring-1 focus:ring-primary min-w-[140px]"
+              />
+              {filterDate && (
+                <button
+                  onClick={() => setFilterDate('')}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -205,7 +224,7 @@ const CommunicationsPage: React.FC = () => {
             <Mail className="w-10 h-10 mx-auto mb-3 opacity-30" />
             <p className="font-medium text-sm">No communications found</p>
             <p className="text-xs mt-1">
-              {searchTerm || filterType !== 'all' || filterStatus !== 'all'
+              {searchTerm || filterType !== 'all' || filterStatus !== 'all' || filterDate
                 ? 'Try adjusting your filters'
                 : 'No emails have been sent yet'}
             </p>

@@ -85,8 +85,12 @@ const AppLayout: React.FC = () => {
         className="h-screen fixed left-0 top-0 z-50 border-r border-border bg-card hidden md:flex flex-col transition-colors duration-200"
       >
         <div className="p-4 flex items-center gap-3 overflow-hidden h-16 border-b border-border">
-          <div className="min-w-[32px] h-8 w-8 rounded bg-primary flex items-center justify-center text-primary-foreground font-serif font-bold text-sm flex-shrink-0">T</div>
-          {!collapsed && <span className="font-serif font-bold text-xl whitespace-nowrap">Trailbill<span className="font-sans font-medium text-xs text-primary/70 ml-[1px]">.com</span></span>}
+          {businessProfile?.logoUrl ? (
+            <img src={businessProfile.logoUrl} alt="Logo" className="min-w-[32px] h-8 w-8 rounded object-contain flex-shrink-0" />
+          ) : (
+            <div className="min-w-[32px] h-8 w-8 rounded bg-primary flex items-center justify-center text-primary-foreground font-serif font-bold text-sm flex-shrink-0">T</div>
+          )}
+          {!collapsed && <span className="font-serif font-bold text-xl whitespace-nowrap">{businessProfile?.businessName || 'Trailbill'}<span className="font-sans font-medium text-xs text-primary/70 ml-[1px]">.com</span></span>}
         </div>
 
         <nav className="flex-1 p-2 space-y-1 mt-4 overflow-hidden">

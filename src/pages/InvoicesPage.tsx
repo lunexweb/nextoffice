@@ -860,6 +860,9 @@ const InvoicesPage: React.FC = () => {
                 <div className="bg-white text-[#0D1117] rounded-lg p-6 space-y-4" style={{ fontFamily: "'DM Sans', sans-serif" }}>
                   {/* Header */}
                   <div className="text-center border-b border-[#DDE2EA] pb-4 mb-4">
+                    {businessProfile?.logoUrl && (
+                      <img src={businessProfile.logoUrl} alt="Business logo" className="h-12 max-w-[160px] object-contain mx-auto mb-2" />
+                    )}
                     <h3 style={{ fontFamily: "'Playfair Display', serif" }} className="text-xl font-bold">{businessProfile?.businessName || 'Your Business'}</h3>
                     <p className="text-sm text-[#52606D] mb-1">{[businessProfile?.address, businessProfile?.city].filter(Boolean).join(', ') || ''}</p>
                     <p className="text-xs text-[#52606D]">{businessProfile?.vatSettings?.registrationNumber ? `VAT: ${businessProfile.vatSettings.registrationNumber} | ` : ''}EMAIL: {businessProfile?.email || ''}</p>
@@ -1107,7 +1110,7 @@ const InvoicesPage: React.FC = () => {
             const getPDFData = () => {
               const client = clients.find(c => c.id === inv.clientId);
               const lineSub = inv.lineItems?.length > 0 ? inv.lineItems.reduce((s, li) => s + li.quantity * li.rate, 0) : inv.amount;
-              return { invoiceNumber: inv.number, invoiceDate: formatDate(inv.createdAt || new Date().toISOString()), dueDate: formatDate(inv.dueDate), status: inv.status, businessName: businessProfile?.businessName || '', businessEmail: businessProfile?.email || '', businessAddress: [businessProfile?.address, businessProfile?.city].filter(Boolean).join(', '), businessPhone: businessProfile?.phone || '', vatNumber: businessProfile?.vatSettings?.registrationNumber || undefined, clientName: inv.clientName, clientEmail: client?.email, clientAddress: client?.address, items: inv.lineItems?.length > 0 ? inv.lineItems.map(item => ({ description: item.description, quantity: item.quantity, rate: item.rate, amount: item.quantity * item.rate })) : [{ description: 'Service', quantity: 1, rate: lineSub, amount: lineSub }], subtotal: lineSub, tax: inv.vatEnabled ? inv.vatAmount : undefined, taxRate: inv.vatEnabled ? inv.vatPercentage : undefined, total: inv.amount, amountPaid: inv.amountPaid > 0 ? inv.amountPaid : undefined, balance: inv.amountPaid > 0 ? inv.amount - inv.amountPaid : undefined, bankingDetails: businessProfile?.bankingDetails?.bank ? { bank: businessProfile.bankingDetails.bank, account: businessProfile.bankingDetails.account, branch: businessProfile.bankingDetails.branch, type: businessProfile.bankingDetails.type, reference: inv.number } : undefined, customField1: inv.customField1, customField2: inv.customField2 };
+              return { invoiceNumber: inv.number, invoiceDate: formatDate(inv.createdAt || new Date().toISOString()), dueDate: formatDate(inv.dueDate), status: inv.status, businessName: businessProfile?.businessName || '', businessEmail: businessProfile?.email || '', businessAddress: [businessProfile?.address, businessProfile?.city].filter(Boolean).join(', '), businessPhone: businessProfile?.phone || '', vatNumber: businessProfile?.vatSettings?.registrationNumber || undefined, clientName: inv.clientName, clientEmail: client?.email, clientAddress: client?.address, items: inv.lineItems?.length > 0 ? inv.lineItems.map(item => ({ description: item.description, quantity: item.quantity, rate: item.rate, amount: item.quantity * item.rate })) : [{ description: 'Service', quantity: 1, rate: lineSub, amount: lineSub }], subtotal: lineSub, tax: inv.vatEnabled ? inv.vatAmount : undefined, taxRate: inv.vatEnabled ? inv.vatPercentage : undefined, total: inv.amount, amountPaid: inv.amountPaid > 0 ? inv.amountPaid : undefined, balance: inv.amountPaid > 0 ? inv.amount - inv.amountPaid : undefined, bankingDetails: businessProfile?.bankingDetails?.bank ? { bank: businessProfile.bankingDetails.bank, account: businessProfile.bankingDetails.account, branch: businessProfile.bankingDetails.branch, type: businessProfile.bankingDetails.type, reference: inv.number } : undefined, customField1: inv.customField1, customField2: inv.customField2, logoUrl: businessProfile?.logoUrl };
             };
 
             return (
@@ -1248,6 +1251,7 @@ const InvoicesPage: React.FC = () => {
                 bankingDetails: businessProfile?.bankingDetails?.bank ? { bank: businessProfile.bankingDetails.bank, account: businessProfile.bankingDetails.account, branch: businessProfile.bankingDetails.branch, type: businessProfile.bankingDetails.type, reference: inv.number } : undefined,
                 customField1: inv.customField1,
                 customField2: inv.customField2,
+                logoUrl: businessProfile?.logoUrl,
               };
             };
 

@@ -95,13 +95,15 @@ serve(async (req) => {
 
     // Resolve business name
     let businessName = requestData.businessName;
+    let logoUrl = '';
     if (!businessName && invoiceUserId) {
       const { data: profile } = await serviceClient
         .from('profiles')
-        .select('business_name')
+        .select('business_name, logo_url')
         .eq('id', invoiceUserId)
         .single();
       businessName = profile?.business_name || 'Your Business';
+      if (profile?.logo_url) logoUrl = profile.logo_url;
     }
     if (!businessName) businessName = 'Your Business';
 
@@ -142,6 +144,7 @@ serve(async (req) => {
           <!-- Header -->
           <tr>
             <td style="background-color:#312e81;padding:32px 40px;text-align:center;">
+              ${logoUrl ? `<img src="${logoUrl}" alt="${businessName}" style="max-height:48px;max-width:160px;margin-bottom:8px;" />` : ''}
               <p style="margin:0 0 4px;color:rgba(255,255,255,0.6);font-size:12px;letter-spacing:2px;text-transform:uppercase;font-weight:600;">Project Update</p>
               <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">Project Completed 🎉</h1>
             </td>

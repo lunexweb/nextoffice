@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -8,11 +8,11 @@ import {
   CreditCard, 
   Settings, 
   Save,
-  Camera,
   Upload,
-  Building2,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Trash2,
+  ImageIcon
 } from 'lucide-react';
 import { NOCard } from '@/components/nextoffice/shared';
 
@@ -50,6 +50,13 @@ const UserProfilePage: React.FC = () => {
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [saveError, setSaveError] = useState('');
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoError, setLogoError] = useState('');
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  const ALLOWED_LOGO_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/svg+xml', 'image/webp', 'image/x-icon', 'image/bmp'];
+  const MAX_LOGO_SIZE = 2 * 1024 * 1024; // 2MB
 
   const [profileData, setProfileData] = useState<UserProfileData>({
     firstName: '',
@@ -88,6 +95,7 @@ const UserProfilePage: React.FC = () => {
           supabase.from('banking_details').select('*').eq('user_id', user.id).eq('is_primary', true).maybeSingle(),
         ]);
         if (profile) {
+          setLogoUrl(profile.logo_url || null);
           setProfileData(prev => ({
             ...prev,
             firstName: profile.first_name || '',
@@ -125,6 +133,70 @@ const UserProfilePage: React.FC = () => {
 
   const handleInputChange = (field: keyof UserProfileData, value: string | number | boolean) => {
     setProfileData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoError('');
+
+    if (!ALLOWED_LOGO_TYPES.includes(file.type)) {
+      setLogoError('Invalid file type. Please upload PNG, JPG, GIF, SVG, WebP, ICO, or BMP.');
+      return;
+    }
+    if (file.size > MAX_LOGO_SIZE) {
+      setLogoError('File too large. Maximum size is 2 MB.');
+      return;
+    }
+
+    setLogoUploading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
+      const filePath = `${user.id}/logo.${ext}`;
+
+      // Remove old logo files first
+      const { data: existing } = await supabase.storage.from('logos').list(user.id);
+      if (existing && existing.length > 0) {
+        await supabase.storage.from('logos').remove(existing.map(f => `${user.id}/${f.name}`));
+      }
+
+      const { error: uploadError } = await supabase.storage.from('logos').upload(filePath, file, { upsert: true });
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from('logos').getPublicUrl(filePath);
+      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+      await supabase.from('profiles').update({ logo_url: publicUrl }).eq('id', user.id);
+      setLogoUrl(publicUrl);
+      window.dispatchEvent(new Event('profileUpdated'));
+    } catch (err: any) {
+      setLogoError(err?.message || 'Failed to upload logo');
+    } finally {
+      setLogoUploading(false);
+      if (logoInputRef.current) logoInputRef.current.value = '';
+    }
+  };
+
+  const handleLogoDelete = async () => {
+    setLogoError('');
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: existing } = await supabase.storage.from('logos').list(user.id);
+      if (existing && existing.length > 0) {
+        await supabase.storage.from('logos').remove(existing.map(f => `${user.id}/${f.name}`));
+      }
+
+      await supabase.from('profiles').update({ logo_url: null }).eq('id', user.id);
+      setLogoUrl(null);
+      window.dispatchEvent(new Event('profileUpdated'));
+    } catch (err: any) {
+      setLogoError(err?.message || 'Failed to delete logo');
+    }
   };
 
   const handleSave = async () => {
@@ -209,21 +281,6 @@ const UserProfilePage: React.FC = () => {
 
   const renderPersonalInfo = () => (
     <div className="space-y-6">
-      <div className="flex items-center gap-6">
-        <div className="relative">
-          <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center text-2xl font-bold text-primary">
-            {profileData.firstName?.[0]}{profileData.lastName?.[0]}
-          </div>
-          <button className="absolute -bottom-2 -right-2 rounded-full w-8 h-8 p-0 bg-primary text-white flex items-center justify-center">
-            <Camera className="w-4 h-4" />
-          </button>
-        </div>
-        <div>
-          <h3 className="text-lg font-semibold">Profile Picture</h3>
-          <p className="text-sm text-muted-foreground">Upload a professional headshot for your profile</p>
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="text-sm font-medium mb-2 block">First Name</label>
@@ -270,19 +327,61 @@ const UserProfilePage: React.FC = () => {
 
   const renderBusinessInfo = () => (
     <div className="space-y-6">
-      <div className="flex items-center gap-6">
-        <div className="relative">
-          <div className="w-24 h-24 border-2 border-dashed border-muted-foreground/25 rounded-lg flex items-center justify-center bg-muted/50">
-            <Building2 className="w-8 h-8 text-muted-foreground" />
+      {/* Business Logo Upload */}
+      <div className="border border-border rounded-xl p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-base font-semibold">Business Logo</h3>
+            <p className="text-xs text-muted-foreground">Appears on invoices, emails and documents · Max 2 MB · PNG, JPG, SVG, WebP, GIF</p>
           </div>
-          <button className="absolute -bottom-2 -right-2 rounded-full w-8 h-8 p-0 bg-primary text-white flex items-center justify-center">
-            <Upload className="w-4 h-4" />
-          </button>
         </div>
-        <div>
-          <h3 className="text-lg font-semibold">Business Logo</h3>
-          <p className="text-sm text-muted-foreground">Upload your company logo for invoices and documents</p>
+
+        <div className="flex items-center gap-5">
+          {logoUrl ? (
+            <div className="w-24 h-24 rounded-lg border border-border bg-white flex items-center justify-center overflow-hidden">
+              <img src={logoUrl} alt="Business logo" className="max-w-full max-h-full object-contain" />
+            </div>
+          ) : (
+            <div className="w-24 h-24 border-2 border-dashed border-muted-foreground/25 rounded-lg flex flex-col items-center justify-center bg-muted/50 gap-1">
+              <ImageIcon className="w-6 h-6 text-muted-foreground/50" />
+              <span className="text-[10px] text-muted-foreground">No logo</span>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-2">
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/jpg,image/gif,image/svg+xml,image/webp,image/x-icon,image/bmp"
+              onChange={handleLogoUpload}
+              className="hidden"
+            />
+            <button
+              onClick={() => logoInputRef.current?.click()}
+              disabled={logoUploading}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-border hover:bg-accent transition-colors disabled:opacity-50"
+            >
+              <Upload className="w-4 h-4" />
+              {logoUploading ? 'Uploading…' : logoUrl ? 'Replace Logo' : 'Upload Logo'}
+            </button>
+            {logoUrl && (
+              <button
+                onClick={handleLogoDelete}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                Remove
+              </button>
+            )}
+          </div>
         </div>
+
+        {logoError && (
+          <p className="text-xs text-red-600 flex items-center gap-1">
+            <AlertCircle className="w-3.5 h-3.5" />
+            {logoError}
+          </p>
+        )}
       </div>
 
       <div>

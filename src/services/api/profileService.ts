@@ -22,6 +22,7 @@ const mapProfile = (row: any): BusinessProfile => ({
   },
   invoicePrefix: row.invoice_prefix || 'INV',
   invoiceStartNumber: row.invoice_start_number || 1,
+  logoUrl: row.logo_url || undefined,
 });
 
 export const profileService = {
@@ -79,6 +80,7 @@ export const profileService = {
       dbUpdates.vat_percentage = updates.vatSettings.percentage;
       dbUpdates.vat_number = updates.vatSettings.registrationNumber;
     }
+    if (updates.logoUrl !== undefined) dbUpdates.logo_url = updates.logoUrl;
 
     const { data, error } = await supabase
       .from('profiles')

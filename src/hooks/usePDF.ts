@@ -2,6 +2,31 @@ import { useState } from 'react';
 import { pdfService, InvoicePDFData } from '@/services/pdfService';
 import { useToast } from './use-toast';
 
+const loadLogoAsDataUrl = (url: string): Promise<string | undefined> =>
+  new Promise(resolve => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        canvas.getContext('2d')!.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      } catch { resolve(undefined); }
+    };
+    img.onerror = () => resolve(undefined);
+    img.src = url;
+  });
+
+const prepareLogoData = async (data: InvoicePDFData): Promise<InvoicePDFData> => {
+  if (data.logoUrl && !data.logoDataUrl) {
+    const dataUrl = await loadLogoAsDataUrl(data.logoUrl);
+    return { ...data, logoDataUrl: dataUrl };
+  }
+  return data;
+};
+
 export const usePDF = () => {
   const [generating, setGenerating] = useState(false);
   const { toast } = useToast();
@@ -9,7 +34,8 @@ export const usePDF = () => {
   const downloadInvoicePDF = async (data: InvoicePDFData, filename?: string) => {
     setGenerating(true);
     try {
-      pdfService.downloadInvoicePDF(data, filename);
+      const prepared = await prepareLogoData(data);
+      pdfService.downloadInvoicePDF(prepared, filename);
       toast({
         title: 'PDF Downloaded',
         description: `Invoice ${data.invoiceNumber} has been downloaded`,
@@ -29,7 +55,8 @@ export const usePDF = () => {
   const previewInvoicePDF = async (data: InvoicePDFData) => {
     setGenerating(true);
     try {
-      pdfService.previewInvoicePDF(data);
+      const prepared = await prepareLogoData(data);
+      pdfService.previewInvoicePDF(prepared);
     } catch (error) {
       toast({
         title: 'Error',

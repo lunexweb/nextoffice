@@ -80,10 +80,10 @@ serve(async (req) => {
       const maxReminders = setting.max_reminders_per_invoice ?? 3;
       const userId = setting.user_id;
 
-      // ── 2. Get user's profile (for business name / email) ────────────────
+      // ── 2. Get user's profile (for business name / email / logo) ────────────────
       const { data: profile } = await supabaseAdmin
         .from('profiles')
-        .select('business_name, email')
+        .select('business_name, email, logo_url')
         .eq('id', userId)
         .single();
 
@@ -368,6 +368,7 @@ function buildReminderHtml(p: {
   <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
   <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
     <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+      ${profile?.logo_url ? `<img src="${profile.logo_url}" alt="${businessName}" style="max-height:48px;max-width:160px;margin-bottom:8px;" />` : ''}
       <div style="font-size: 40px; margin-bottom: 8px;">🔔</div>
       <h1 style="color: white; margin: 0; font-size: 24px;">Payment Reminder</h1>
       <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0;">${p.daysUntilDue === 1 ? 'Due Tomorrow!' : `Due in ${p.daysUntilDue} Days`}</p>
@@ -463,6 +464,7 @@ function buildFollowUpHtml(p: {
   <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
   <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
     <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+      ${profile?.logo_url ? `<img src="${profile.logo_url}" alt="${businessName}" style="max-height:48px;max-width:160px;margin-bottom:8px;" />` : ''}
       <div style="font-size: 40px; margin-bottom: 8px;">⚠️</div>
       <h1 style="color: white; margin: 0; font-size: 24px;">Payment Overdue</h1>
       <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0;">${p.daysOverdue} day${p.daysOverdue !== 1 ? 's' : ''} past due date</p>

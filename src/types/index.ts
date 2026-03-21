@@ -114,6 +114,7 @@ export interface BusinessProfile {
   };
   invoicePrefix?: string;
   invoiceStartNumber?: number;
+  logoUrl?: string;
 }
 
 export interface ClientFormData {

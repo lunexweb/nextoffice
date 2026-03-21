@@ -53,6 +53,10 @@ export interface InvoicePDFData {
   // Notes
   notes?: string;
   terms?: string;
+
+  // Logo
+  logoUrl?: string;
+  logoDataUrl?: string;
 }
 
 class PDFService {
@@ -83,11 +87,18 @@ class PDFService {
     doc.setFillColor(...gold);
     doc.rect(0, 36, W, 2, 'F');
 
-    // Business name
+    // Logo (if provided as dataUrl) + Business name
+    let logoOffset = 0;
+    if (data.logoDataUrl) {
+      try {
+        doc.addImage(data.logoDataUrl, 'PNG', margin, 6, 24, 24);
+        logoOffset = 28;
+      } catch { /* skip logo if it fails */ }
+    }
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(18);
-    doc.text(data.businessName, margin, 16);
+    doc.text(data.businessName, margin + logoOffset, 16);
 
     // Business sub-info
     doc.setFont('helvetica', 'normal');

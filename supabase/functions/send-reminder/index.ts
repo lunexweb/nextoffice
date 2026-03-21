@@ -14,6 +14,8 @@ interface ReminderEmailRequest {
   businessName?: string;
   clientScore?: number;
   hasHistory?: boolean;
+  isOwnerNotification?: boolean;
+  clientName?: string;
 }
 
 function getLevelLabel(s: number): string {
@@ -52,7 +54,7 @@ serve(async (req) => {
     const resend = new ResendClient(resendApiKey);
     const requestData: ReminderEmailRequest = await req.json();
 
-    const { invoiceNumber, recipientEmail, recipientName, amount, dueDate, daysOverdue } = requestData;
+    const { invoiceNumber, recipientEmail, recipientName, amount, dueDate, daysOverdue, isOwnerNotification, clientName } = requestData;
 
     // Resolve client_id and user_id from invoice
     let clientId: string | undefined;
@@ -102,16 +104,105 @@ serve(async (req) => {
     const isOverdue = daysOverdue && daysOverdue > 0;
     const accentColor = isOverdue ? '#ef4444' : '#f59e0b';
     const headerBg = isOverdue ? '#450a0a' : '#451a03';
-    const subject = isOverdue
-      ? `Payment Overdue — Invoice ${invoiceNumber} Requires Attention`
-      : `Friendly Reminder — Invoice ${invoiceNumber} Due Soon`;
-
     const fromEmail = Deno.env.get('FROM_EMAIL') ?? 'invoices@nextoffice.app';
     const siteUrl = Deno.env.get('SITE_URL') ?? 'https://nextoffice.app';
     const landingPageUrl = Deno.env.get('LANDING_PAGE_URL') ?? 'https://nextoffice.app';
-    const commitmentLink = `${siteUrl}/invoice/${invoiceNumber}/commitment`;
     const formattedDue = new Date(dueDate + (dueDate.includes('T') ? '' : 'T00:00:00')).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' });
     const formattedAmount = `R${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const displayClient = clientName || recipientName;
+    const dashboardUrl = `${siteUrl}/app/invoices`;
+
+    // ── Owner notification email (different from client-facing email) ─────────
+    if (isOwnerNotification) {
+      const ownerSubject = isOverdue
+        ? `Follow-up sent to ${displayClient} — Invoice ${invoiceNumber}`
+        : `Reminder sent to ${displayClient} — Invoice ${invoiceNumber}`;
+      const actionLabel = isOverdue ? 'Follow-Up Sent' : 'Reminder Sent';
+      const accentOwner = isOverdue ? '#ef4444' : '#f59e0b';
+      const headerOwner = isOverdue ? '#1c0a0a' : '#1c1003';
+
+      const ownerHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${ownerSubject}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;padding:40px 16px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+          <tr>
+            <td style="background-color:${headerOwner};padding:28px 40px;text-align:center;">
+              <p style="margin:0 0 4px;color:rgba(255,255,255,0.5);font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:600;">Automation Alert · ${businessName}</p>
+              <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;">${actionLabel}</h1>
+            </td>
+          </tr>
+          <tr><td style="background-color:${accentOwner};height:4px;font-size:0;line-height:0;">&nbsp;</td></tr>
+          <tr>
+            <td style="padding:32px 40px 24px;">
+              <p style="margin:0 0 20px;color:#475569;font-size:15px;line-height:1.7;">
+                An automated <strong style="color:#1e293b;">${isOverdue ? 'follow-up' : 'payment reminder'}</strong> was sent to <strong style="color:#1e293b;">${displayClient}</strong> for the invoice below.
+              </p>
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;border-radius:10px;overflow:hidden;margin-bottom:28px;border:1px solid #e2e8f0;">
+                <tr>
+                  <td colspan="2" style="background-color:${accentOwner}18;padding:12px 16px;border-bottom:1px solid #e2e8f0;">
+                    <p style="margin:0;color:${accentOwner};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;">Invoice Details</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:11px 16px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:14px;width:45%;">Client</td>
+                  <td style="padding:11px 16px;border-bottom:1px solid #f1f5f9;text-align:right;font-size:14px;font-weight:600;color:#1e293b;">${displayClient}</td>
+                </tr>
+                <tr>
+                  <td style="padding:11px 16px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:14px;">Invoice</td>
+                  <td style="padding:11px 16px;border-bottom:1px solid #f1f5f9;text-align:right;font-size:14px;font-weight:600;color:#1e293b;">${invoiceNumber}</td>
+                </tr>
+                <tr>
+                  <td style="padding:11px 16px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:14px;">Amount</td>
+                  <td style="padding:11px 16px;border-bottom:1px solid #f1f5f9;text-align:right;font-size:18px;font-weight:700;color:${accentOwner};">${formattedAmount}</td>
+                </tr>
+                <tr>
+                  <td style="padding:11px 16px;color:#64748b;font-size:14px;">${isOverdue ? 'Days Overdue' : 'Due Date'}</td>
+                  <td style="padding:11px 16px;text-align:right;font-size:14px;font-weight:600;color:${accentOwner};">${isOverdue ? `${daysOverdue} day${(daysOverdue ?? 0) !== 1 ? 's' : ''}` : formattedDue}</td>
+                </tr>
+              </table>
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+                <tr>
+                  <td align="center">
+                    <a href="${dashboardUrl}" style="display:inline-block;background-color:#0f172a;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;padding:14px 40px;border-radius:8px;">View in Dashboard</a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0;color:#94a3b8;font-size:12px;text-align:center;">This is an automated notification from your NextOffice account.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+      const ownerResult = await resend.sendEmail({
+        from: `${businessName} via NextOffice <${fromEmail}>`,
+        to: recipientEmail,
+        subject: ownerSubject,
+        html: ownerHtml,
+      });
+
+      return new Response(
+        JSON.stringify({ success: true, emailId: ownerResult.id }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 },
+      );
+    }
+
+    // ── Client-facing email (unchanged below) ─────────────────────────────────
+    const subject = isOverdue
+      ? `Payment Overdue — Invoice ${invoiceNumber} Requires Attention`
+      : `Friendly Reminder — Invoice ${invoiceNumber} Due Soon`;
+    const commitmentLink = `${siteUrl}/invoice/${invoiceNumber}/commitment`;
 
     const emailHtml = `<!DOCTYPE html>
 <html lang="en">

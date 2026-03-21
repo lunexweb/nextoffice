@@ -68,6 +68,7 @@ class EmailService {
     businessName: string;
     businessEmail: string;
     businessPhone?: string;
+    isOwnerNotification?: boolean;
   }): Promise<{ success: boolean; emailId: string; message: string }> {
     return this.invoke('send-reminder', {
       invoiceId: params.invoiceId,
@@ -77,6 +78,10 @@ class EmailService {
       amount: params.amount,
       dueDate: params.dueDate,
       daysOverdue: params.daysOverdue,
+      ...(params.isOwnerNotification && {
+        isOwnerNotification: true,
+        clientName: params.clientName,
+      }),
     }, 'followup', params.to);
   }
 

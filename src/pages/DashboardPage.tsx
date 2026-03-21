@@ -328,7 +328,7 @@ const DashboardPage: React.FC = () => {
           body: `Auto follow-up sent to ${invoice.clientEmail}`,
         });
 
-        // Send owner notification
+        // Send owner notification (digest-style, not the client-facing email)
         await emailService.sendFollowUp({
           to: businessProfile.email,
           invoiceId: invoice.id,
@@ -340,6 +340,7 @@ const DashboardPage: React.FC = () => {
           businessName: businessProfile.businessName,
           businessEmail: businessProfile.email,
           businessPhone: businessProfile.phone || '',
+          isOwnerNotification: true,
         });
       } catch {
         // Silently fail — don't block dashboard

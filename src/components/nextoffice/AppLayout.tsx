@@ -84,30 +84,12 @@ const AppLayout: React.FC = () => {
         transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
         className="h-screen fixed left-0 top-0 z-50 border-r border-border bg-card hidden md:flex flex-col transition-colors duration-200"
       >
-        <div className="p-4 flex items-center justify-between overflow-hidden h-16 border-b border-border">
-          {/* Left side: User logo in circle + Trailbill.com minimal */}
+        <div className="p-4 flex items-center overflow-hidden h-16 border-b border-border">
+          {/* Trailbill.com branding only */}
           <div className="flex items-center gap-3">
-            {/* User logo circle with hover effect */}
-            <div className="relative group">
-              {businessProfile?.logoUrl ? (
-                <img 
-                  src={businessProfile.logoUrl} 
-                  alt="Business Logo" 
-                  className="min-w-[32px] h-8 w-8 rounded-full object-cover transition-transform duration-200 group-hover:scale-110" 
-                />
-              ) : (
-                <div className="min-w-[32px] h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-serif font-bold text-sm transition-transform duration-200 group-hover:scale-110">T</div>
-              )}
-            </div>
+            <div className="min-w-[32px] h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-serif font-bold text-sm">T</div>
             {!collapsed && <span className="font-sans text-xl whitespace-nowrap text-primary">Trailbill<span className="font-normal text-[0.65em] text-primary/60">.com</span></span>}
           </div>
-          
-          {/* Right side: Business name only */}
-          {!collapsed && (
-            <div className="flex items-center">
-              <span className="font-serif font-bold text-xl whitespace-nowrap">{businessProfile?.businessName}</span>
-            </div>
-          )}
         </div>
 
         <nav className="flex-1 p-2 space-y-1 mt-4 overflow-hidden">

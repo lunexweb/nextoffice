@@ -10,8 +10,10 @@ import { communicationService } from '@/services/api/communicationService';
 import { supabase } from '@/lib/supabase';
 import { InvoiceNegotiationOptions } from '@/components/nextoffice/InvoiceNegotiationOptions';
 import { invoiceService } from '@/services/api/invoiceService';
+import { useToast } from '@/hooks/use-toast';
 
 const InvoicesPage: React.FC = () => {
+  const { toast } = useToast();
   const [view, setView] = useState<'list' | 'create'>('list');
   const [filterTab, setFilterTab] = useState<'All' | 'Outstanding' | 'Overdue' | 'Paid' | 'Recurring'>('All');
   const [sent, setSent] = useState(false);
@@ -478,21 +480,45 @@ const InvoicesPage: React.FC = () => {
                 setSendingEmail(true);
                 try {
                   const client = clients.find(c => c.id === formData.clientId);
-                  await supabase.functions.invoke('send-invoice', {
+                  
+                  if (!client?.email) {
+                    toast({
+                      title: 'Error',
+                      description: 'Client email address is required',
+                      variant: 'destructive',
+                    });
+                    setSendingEmail(false);
+                    return;
+                  }
+
+                  const { data, error } = await supabase.functions.invoke('send-invoice', {
                     body: {
                       invoiceId: createdInvoiceId,
-                      recipientEmail: client?.email,
-                      recipientName: client?.name || clientName,
+                      recipientEmail: client.email,
+                      recipientName: client.name || clientName,
                       invoiceNumber: createdInvoiceNumber,
                       amount: total,
                       dueDate: formData.dueDate,
                       businessName: businessProfile?.businessName,
                     },
                   });
+
+                  if (error) {
+                    throw error;
+                  }
+
                   setEmailSent(true);
+                  toast({
+                    title: 'Email Sent!',
+                    description: `Invoice ${createdInvoiceNumber} has been sent to ${client.email}`,
+                  });
                 } catch (err) {
                   console.error('Failed to send email:', err);
-                  setErrorModal({ show: true, message: 'Failed to send email. Please try again.' });
+                  toast({
+                    title: 'Failed to Send Email',
+                    description: 'There was an error sending the invoice. Please try again.',
+                    variant: 'destructive',
+                  });
                 } finally {
                   setSendingEmail(false);
                 }

@@ -21,6 +21,7 @@ import ChangePasswordPage from '@/pages/ChangePasswordPage';
 import CommitmentsPage from '@/pages/CommitmentsPage';
 import ClientCommitmentPage from '@/pages/ClientCommitmentPage';
 import CEODashboardPage from '@/pages/CEODashboardPage';
+import ResetPasswordPage from '@/pages/ResetPasswordPage';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { auth } = useApp();
@@ -48,6 +49,7 @@ const AppRoutes = () => (
     <Route path="/" element={<LandingPage />} />
     <Route path="/signin" element={<SignInPage />} />
     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+    <Route path="/reset-password" element={<ResetPasswordPage />} />
     <Route path="/invoice/:invoiceNumber/commitment" element={<ClientCommitmentPage />} />
     <Route path="/ceo" element={<ProtectedRoute><CEODashboardPage /></ProtectedRoute>} />
     <Route path="/app" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>

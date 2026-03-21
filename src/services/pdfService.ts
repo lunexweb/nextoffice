@@ -39,328 +39,444 @@ export interface InvoicePDFData {
   logoDataUrl?: string;
 }
 
+type RGB = [number, number, number];
+
 class PDFService {
   private fmt(n: number): string {
     return 'R ' + n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  private checkPage(doc: jsPDF, yPos: number, needed: number, margin: number): number {
+    const H = doc.internal.pageSize.getHeight();
+    if (yPos + needed > H - 30) {
+      doc.addPage();
+      return margin;
+    }
+    return yPos;
   }
 
   generateInvoicePDF(data: InvoicePDFData): jsPDF {
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const W = doc.internal.pageSize.getWidth();
     const H = doc.internal.pageSize.getHeight();
-    const margin = 20;
+    const m = 20;
+    const contentW = W - m * 2;
 
-    // Sophisticated color palette
-    const primary = [26, 35, 126];      // Deep professional blue
-    const secondary = [92, 107, 192];   // Lighter blue accent
-    const dark = [33, 33, 33];         // Rich black
-    const gray = [117, 117, 117];      // Medium gray
-    const lightGray = [245, 245, 245]; // Very light gray background
-    const white = [255, 255, 255];
-    const success = [46, 125, 50];     // Professional green
-    const divider = [224, 224, 224];   // Subtle divider
+    // Colors
+    const charcoal: RGB = [45, 45, 45];
+    const dark: RGB = [33, 33, 33];
+    const mid: RGB = [100, 100, 100];
+    const light: RGB = [155, 155, 155];
+    const veryLight: RGB = [245, 245, 245];
+    const white: RGB = [255, 255, 255];
+    const accent: RGB = [45, 45, 45];
+    const green: RGB = [39, 174, 96];
 
-    let yPos = margin;
+    // ──────────────────────────────────────────
+    //  HEADER BAND (dark charcoal)
+    // ──────────────────────────────────────────
+    const headerH = 52;
+    doc.setFillColor(...charcoal);
+    doc.rect(0, 0, W, headerH);
 
-    // Header with accent bar
-    doc.setFillColor(...primary);
-    doc.rect(0, 0, W, 8);
+    // Business info in header (top-left, inside dark band)
+    doc.setTextColor(...white);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(15);
+    doc.text(data.businessName.toUpperCase(), m, 16);
 
-    yPos = 18;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    const headerInfo: string[] = [];
+    if (data.businessAddress) headerInfo.push(data.businessAddress);
+    if (data.businessPhone) headerInfo.push('Tel: ' + data.businessPhone);
+    if (data.businessEmail) headerInfo.push(data.businessEmail);
+    if (data.vatNumber) headerInfo.push('VAT: ' + data.vatNumber);
+    doc.setTextColor(200, 200, 200);
+    headerInfo.forEach((line, i) => {
+      doc.text(line, m, 24 + i * 4.5);
+    });
 
-    // Logo
+    // Logo (top-right, inside dark band)
     if (data.logoDataUrl) {
       try {
-        doc.addImage(data.logoDataUrl, 'PNG', margin, yPos, 35, 24);
-      } catch { /* skip logo */ }
+        doc.addImage(data.logoDataUrl, 'PNG', W - m - 30, 10, 30, 30);
+      } catch { /* skip */ }
     }
 
-    // Business name and info
-    doc.setTextColor(...dark);
+    // ──────────────────────────────────────────
+    //  INVOICE TITLE BAR
+    // ──────────────────────────────────────────
+    const titleBarY = headerH;
+    const titleBarH = 18;
+    doc.setFillColor(80, 80, 80);
+    doc.rect(0, titleBarY, W, titleBarH);
+
+    doc.setTextColor(...white);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
-    doc.text(data.businessName, margin, yPos + 32);
+    doc.text('INVOICE', W / 2, titleBarY + 12, { align: 'center' });
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(...gray);
-    let businessY = yPos + 40;
-    if (data.businessAddress) {
-      doc.text(data.businessAddress, margin, businessY);
-      businessY += 5;
-    }
-    if (data.businessPhone) {
-      doc.text('Tel: ' + data.businessPhone, margin, businessY);
-      businessY += 5;
-    }
-    if (data.businessEmail) {
-      doc.text('Email: ' + data.businessEmail, margin, businessY);
-      businessY += 5;
-    }
-    if (data.vatNumber) {
-      doc.text('VAT No: ' + data.vatNumber, margin, businessY);
-    }
+    let y = titleBarY + titleBarH + 12;
 
-    // INVOICE title (top right)
-    doc.setTextColor(...primary);
+    // ──────────────────────────────────────────
+    //  INVOICE DETAILS ROW
+    // ──────────────────────────────────────────
+    const colW = contentW / 4;
+
+    // Invoice No
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(32);
-    doc.text('INVOICE', W - margin, yPos + 8, { align: 'right' });
-
-    // Invoice details box (top right)
-    const detailsBoxY = yPos + 20;
-    doc.setFillColor(...lightGray);
-    doc.rect(W - margin - 60, detailsBoxY, 60, 32);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.setTextColor(...gray);
-    doc.text('INVOICE NO.', W - margin - 55, detailsBoxY + 6);
+    doc.setFontSize(7);
+    doc.setTextColor(...light);
+    doc.text('INVOICE NO.', m, y);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(...dark);
-    doc.text(data.invoiceNumber, W - margin - 55, detailsBoxY + 12);
+    doc.text(data.invoiceNumber, m, y + 6);
 
+    // Date
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.setTextColor(...gray);
-    doc.text('DATE', W - margin - 55, detailsBoxY + 20);
+    doc.setFontSize(7);
+    doc.setTextColor(...light);
+    doc.text('DATE', m + colW, y);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
+    doc.setFontSize(10);
     doc.setTextColor(...dark);
-    doc.text(data.invoiceDate, W - margin - 55, detailsBoxY + 26);
+    doc.text(data.invoiceDate, m + colW, y + 6);
 
+    // Due Date
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.setTextColor(...gray);
-    doc.text('DUE DATE', W - margin - 25, detailsBoxY + 20);
+    doc.setFontSize(7);
+    doc.setTextColor(...light);
+    doc.text('DUE DATE', m + colW * 2, y);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
+    doc.setFontSize(10);
     doc.setTextColor(...dark);
-    doc.text(data.dueDate, W - margin - 25, detailsBoxY + 26);
+    doc.text(data.dueDate, m + colW * 2, y + 6);
 
-    // Divider line
-    yPos = yPos + 55;
-    doc.setDrawColor(...divider);
-    doc.setLineWidth(1);
-    doc.line(margin, yPos, W - margin, yPos);
-
-    // Bill To section with box
-    yPos += 12;
-    doc.setFillColor(...lightGray);
-    doc.rect(margin, yPos - 3, 85, 30);
-
-    doc.setTextColor(...primary);
+    // Status
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.text('BILL TO', margin + 5, yPos + 3);
+    doc.setFontSize(7);
+    doc.setTextColor(...light);
+    doc.text('STATUS', m + colW * 3, y);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    const statusLabel = data.status.replace(/_/g, ' ').toUpperCase();
+    if (data.status === 'paid') {
+      doc.setTextColor(...green);
+    } else if (data.status === 'overdue') {
+      doc.setTextColor(220, 53, 69);
+    } else {
+      doc.setTextColor(...dark);
+    }
+    doc.text(statusLabel, m + colW * 3, y + 6);
 
-    yPos += 10;
-    doc.setTextColor(...dark);
+    y += 18;
+
+    // Divider
+    doc.setDrawColor(220, 220, 220);
+    doc.setLineWidth(0.5);
+    doc.line(m, y, W - m, y);
+    y += 10;
+
+    // ──────────────────────────────────────────
+    //  BILL TO + CUSTOM FIELDS
+    // ──────────────────────────────────────────
+    const billToX = m;
+    const fieldsX = m + contentW / 2 + 10;
+
+    // Bill To (left)
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(...light);
+    doc.text('BILL TO', billToX, y);
+    y += 6;
+
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
-    doc.text(data.clientName, margin + 5, yPos);
+    doc.setTextColor(...dark);
+    doc.text(data.clientName, billToX, y);
 
-    yPos += 6;
+    let clientY = y + 6;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
-    doc.setTextColor(...gray);
+    doc.setTextColor(...mid);
     if (data.clientAddress) {
-      doc.text(data.clientAddress, margin + 5, yPos);
-      yPos += 5;
+      const addrLines = doc.splitTextToSize(data.clientAddress, contentW / 2 - 10);
+      doc.text(addrLines, billToX, clientY);
+      clientY += addrLines.length * 5;
     }
     if (data.clientEmail) {
-      doc.text(data.clientEmail, margin + 5, yPos);
-      yPos += 5;
+      doc.text(data.clientEmail, billToX, clientY);
+      clientY += 5;
     }
 
-    yPos += 10;
+    // Custom Field 1 and Reference (right side)
+    let fieldY = y - 6;
+    if (data.customField1) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(...light);
+      doc.text('CUSTOM FIELD', fieldsX, fieldY);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(...dark);
+      doc.text(data.customField1, fieldsX, fieldY + 6);
+      fieldY += 16;
+    }
+    if (data.customField2) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(...light);
+      doc.text('REFERENCE', fieldsX, fieldY);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(...dark);
+      doc.text(data.customField2, fieldsX, fieldY + 6);
+      fieldY += 16;
+    }
 
-    // Items table
-    const tableHeaders = [['Description', 'Qty', 'Rate', 'Amount']];
-    const tableData = data.items.map(item => [
+    y = Math.max(clientY, fieldY) + 8;
+
+    // ──────────────────────────────────────────
+    //  ITEMS TABLE
+    // ──────────────────────────────────────────
+    const tableHead = [['Description', 'Qty', 'Unit Price', 'Amount']];
+    const tableBody = data.items.map(item => [
       item.description,
       item.quantity.toString(),
       this.fmt(item.rate),
-      this.fmt(item.amount)
+      this.fmt(item.amount),
     ]);
 
     autoTable(doc, {
-      head: tableHeaders,
-      body: tableData,
-      startY: yPos,
-      margin: { left: margin, right: margin },
-      theme: 'grid',
+      head: tableHead,
+      body: tableBody,
+      startY: y,
+      margin: { left: m, right: m },
+      theme: 'plain',
       headStyles: {
-        fillColor: primary,
-        textColor: white,
+        fillColor: charcoal as any,
+        textColor: white as any,
         fontStyle: 'bold',
-        fontSize: 10,
-        cellPadding: 6,
-        halign: 'left',
+        fontSize: 9,
+        cellPadding: { top: 5, bottom: 5, left: 6, right: 6 },
       },
       bodyStyles: {
-        fillColor: white,
-        textColor: dark,
+        textColor: dark as any,
         fontSize: 9,
-        cellPadding: 8,
+        cellPadding: { top: 6, bottom: 6, left: 6, right: 6 },
+        lineWidth: 0,
       },
       alternateRowStyles: {
-        fillColor: lightGray,
+        fillColor: veryLight as any,
       },
       columnStyles: {
-        0: { cellWidth: 'auto', halign: 'left' },
-        1: { cellWidth: 25, halign: 'center' },
-        2: { cellWidth: 38, halign: 'right' },
-        3: { cellWidth: 42, halign: 'right', fontStyle: 'bold' },
+        0: { cellWidth: 'auto', halign: 'left' as const },
+        1: { cellWidth: 22, halign: 'center' as const },
+        2: { cellWidth: 35, halign: 'right' as const },
+        3: { cellWidth: 40, halign: 'right' as const, fontStyle: 'bold' as const },
       },
-      lineColor: divider,
-      lineWidth: 0.5,
+      didDrawCell: (cellData: any) => {
+        if (cellData.section === 'body') {
+          const rowY = cellData.cell.y + cellData.cell.height;
+          doc.setDrawColor(230, 230, 230);
+          doc.setLineWidth(0.3);
+          doc.line(m, rowY, W - m, rowY);
+        }
+      },
     });
 
-    const tableEnd = (doc as any).lastAutoTable.finalY || yPos + 50;
-    yPos = tableEnd + 12;
+    y = (doc as any).lastAutoTable.finalY + 10;
 
-    // Totals section with background box
-    const totalsBoxWidth = 65;
-    const totalsBoxX = W - margin - totalsBoxWidth;
-    
-    doc.setFillColor(...lightGray);
-    doc.rect(totalsBoxX - 5, yPos - 5, totalsBoxWidth + 5, 45);
+    // ──────────────────────────────────────────
+    //  TOTALS (right-aligned)
+    // ──────────────────────────────────────────
+    y = this.checkPage(doc, y, 50, m);
+
+    const totLabelX = W - m - 55;
+    const totValueX = W - m;
 
     // Subtotal
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
-    doc.setTextColor(...gray);
-    doc.text('Subtotal', totalsBoxX, yPos);
+    doc.setTextColor(...mid);
+    doc.text('Subtotal', totLabelX, y, { align: 'right' });
     doc.setTextColor(...dark);
-    doc.text(this.fmt(data.subtotal), W - margin - 5, yPos, { align: 'right' });
-    yPos += 8;
+    doc.text(this.fmt(data.subtotal), totValueX, y, { align: 'right' });
+    y += 8;
 
     // Tax
     if (data.tax && data.taxRate) {
-      doc.setTextColor(...gray);
-      doc.text('VAT (' + data.taxRate + '%)', totalsBoxX, yPos);
+      doc.setTextColor(...mid);
+      doc.text('VAT (' + data.taxRate + '%)', totLabelX, y, { align: 'right' });
       doc.setTextColor(...dark);
-      doc.text(this.fmt(data.tax), W - margin - 5, yPos, { align: 'right' });
-      yPos += 8;
+      doc.text(this.fmt(data.tax), totValueX, y, { align: 'right' });
+      y += 8;
     }
 
-    // Divider
-    doc.setDrawColor(...divider);
-    doc.setLineWidth(1);
-    doc.line(totalsBoxX, yPos, W - margin - 5, yPos);
-    yPos += 10;
+    // Total line
+    doc.setDrawColor(...charcoal);
+    doc.setLineWidth(0.8);
+    doc.line(totLabelX - 10, y, totValueX, y);
+    y += 8;
 
     // Total
+    doc.setFillColor(...charcoal);
+    doc.rect(totLabelX - 15, y - 5, totValueX - totLabelX + 15, 14);
     doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(...white);
+    doc.text('TOTAL', totLabelX - 5, y + 4, { align: 'right' });
     doc.setFontSize(13);
-    doc.setTextColor(...primary);
-    doc.text('TOTAL', totalsBoxX, yPos);
-    doc.setFontSize(14);
-    doc.text(this.fmt(data.total), W - margin - 5, yPos, { align: 'right' });
-    yPos += 15;
+    doc.text(this.fmt(data.total), totValueX - 3, y + 4, { align: 'right' });
+    y += 20;
 
-    // Payment status
+    // ──────────────────────────────────────────
+    //  PAYMENT STATUS
+    // ──────────────────────────────────────────
     if (data.amountPaid !== undefined && data.amountPaid > 0) {
-      yPos += 8;
-      const statusBoxY = yPos;
-      const statusColor = data.balance === 0 ? success : secondary;
-      
-      doc.setFillColor(...statusColor);
-      doc.rect(margin, statusBoxY, W - margin * 2, 22);
-      
-      doc.setTextColor(...white);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10);
-      const statusText = data.balance === 0 ? 'PAID IN FULL' : 'PARTIAL PAYMENT';
-      doc.text(statusText, margin + 8, statusBoxY + 8);
-      
+      y = this.checkPage(doc, y, 25, m);
+
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
-      doc.text('Amount Paid: ' + this.fmt(data.amountPaid), margin + 8, statusBoxY + 16);
-      if (data.balance && data.balance > 0) {
-        doc.text('Balance: ' + this.fmt(data.balance), W - margin - 8, statusBoxY + 16, { align: 'right' });
+      doc.setTextColor(...mid);
+      doc.text('Amount Paid', totLabelX, y, { align: 'right' });
+      doc.setTextColor(...green);
+      doc.text(this.fmt(data.amountPaid), totValueX, y, { align: 'right' });
+      y += 7;
+
+      if (data.balance !== undefined && data.balance > 0) {
+        doc.setTextColor(...mid);
+        doc.text('Balance Due', totLabelX, y, { align: 'right' });
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...dark);
+        doc.text(this.fmt(data.balance), totValueX, y, { align: 'right' });
+        y += 7;
       }
-      yPos += 30;
+
+      if (data.balance === 0) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(...green);
+        doc.text('PAID IN FULL', totValueX, y, { align: 'right' });
+        y += 7;
+      }
+      y += 8;
     }
 
-    // Banking details
-    if (data.bankingDetails?.bank) {
-      yPos += 12;
-      doc.setDrawColor(...divider);
-      doc.setLineWidth(1);
-      doc.line(margin, yPos, W - margin, yPos);
-      yPos += 10;
+    // ──────────────────────────────────────────
+    //  BANKING DETAILS
+    // ──────────────────────────────────────────
+    if (data.bankingDetails && data.bankingDetails.bank) {
+      y = this.checkPage(doc, y, 45, m);
 
-      doc.setTextColor(...primary);
+      doc.setDrawColor(220, 220, 220);
+      doc.setLineWidth(0.5);
+      doc.line(m, y, W - m, y);
+      y += 10;
+
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
-      doc.text('PAYMENT DETAILS', margin, yPos);
-      yPos += 8;
+      doc.setFontSize(8);
+      doc.setTextColor(...charcoal);
+      doc.text('PAYMENT DETAILS', m, y);
+      y += 7;
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
       doc.setTextColor(...dark);
 
-      const bankDetails = [
-        'Bank: ' + data.bankingDetails.bank,
-        'Account Number: ' + data.bankingDetails.account,
-        'Branch Code: ' + data.bankingDetails.branch,
-        'Account Type: ' + data.bankingDetails.type,
+      const bankRows = [
+        ['Bank', data.bankingDetails.bank],
+        ['Account No.', data.bankingDetails.account],
+        ['Branch Code', data.bankingDetails.branch],
+        ['Account Type', data.bankingDetails.type],
       ];
       if (data.bankingDetails.reference) {
-        bankDetails.push('Payment Reference: ' + data.bankingDetails.reference);
+        bankRows.push(['Reference', data.bankingDetails.reference]);
       }
 
-      bankDetails.forEach(detail => {
-        doc.text(detail, margin, yPos);
-        yPos += 5.5;
+      bankRows.forEach(([label, value]) => {
+        doc.setTextColor(...light);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.text(label, m, y);
+        doc.setTextColor(...dark);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.text(value, m + 35, y);
+        y += 6;
       });
+      y += 4;
     }
 
-    // Notes
-    if (data.customField1 || data.customField2) {
-      yPos += 12;
-      doc.setDrawColor(...divider);
-      doc.setLineWidth(1);
-      doc.line(margin, yPos, W - margin, yPos);
-      yPos += 10;
+    // ──────────────────────────────────────────
+    //  NOTES (Custom Field 1 + Custom Field 2 if they contain longer text)
+    // ──────────────────────────────────────────
+    const hasNotes = (data.customField1 && data.customField1.length > 30) || (data.customField2 && data.customField2.length > 30);
+    if (hasNotes) {
+      y = this.checkPage(doc, y, 30, m);
 
-      doc.setTextColor(...primary);
+      doc.setDrawColor(220, 220, 220);
+      doc.setLineWidth(0.5);
+      doc.line(m, y, W - m, y);
+      y += 10;
+
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
-      doc.text('NOTES', margin, yPos);
-      yPos += 8;
+      doc.setFontSize(8);
+      doc.setTextColor(...charcoal);
+      doc.text('ADDITIONAL NOTES', m, y);
+      y += 7;
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
       doc.setTextColor(...dark);
 
-      if (data.customField1) {
-        const lines = doc.splitTextToSize(data.customField1, W - margin * 2);
-        doc.text(lines, margin, yPos);
-        yPos += lines.length * 5.5;
+      if (data.customField1 && data.customField1.length > 30) {
+        const lines = doc.splitTextToSize(data.customField1, contentW);
+        doc.text(lines, m, y);
+        y += lines.length * 5;
       }
-      if (data.customField2) {
-        const lines = doc.splitTextToSize(data.customField2, W - margin * 2);
-        doc.text(lines, margin, yPos);
+      if (data.customField2 && data.customField2.length > 30) {
+        const lines = doc.splitTextToSize(data.customField2, contentW);
+        doc.text(lines, m, y);
+        y += lines.length * 5;
       }
     }
 
-    // Footer
-    const footerY = H - 25;
-    doc.setFillColor(...primary);
-    doc.rect(0, footerY, W, 8);
+    // ──────────────────────────────────────────
+    //  FOOTER
+    // ──────────────────────────────────────────
+    const totalPages = (doc as any).internal.getNumberOfPages();
+    for (let p = 1; p <= totalPages; p++) {
+      doc.setPage(p);
+      const fY = H - 18;
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(...gray);
-    doc.text('Thank you for your business', W / 2, footerY + 15, { align: 'center' });
-    
-    doc.setFont('helvetica', 'italic');
-    doc.setFontSize(7);
-    doc.text(data.businessName, W / 2, footerY + 21, { align: 'center' });
+      // Footer line
+      doc.setDrawColor(220, 220, 220);
+      doc.setLineWidth(0.5);
+      doc.line(m, fY, W - m, fY);
+
+      // Thank you
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(...mid);
+      doc.text('Thank you for your business', m, fY + 7);
+
+      // Page number
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(...light);
+      if (totalPages > 1) {
+        doc.text('Page ' + p + ' of ' + totalPages, W - m, fY + 7, { align: 'right' });
+      }
+
+      // Business name
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(7);
+      doc.setTextColor(...light);
+      doc.text(data.businessName, W / 2, fY + 7, { align: 'center' });
+    }
 
     return doc;
   }

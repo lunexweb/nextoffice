@@ -185,14 +185,15 @@ class PDFService {
       doc.text(data.customField1, rightColX, yPos, { align: 'right' });
     }
 
-    if (data.customField2) {
+    const paymentReference = data.customField2 || data.invoiceNumber;
+    if (paymentReference) {
       yPos += 6;
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
       doc.setTextColor(...secondaryText);
       doc.text('REFERENCE', rightColX - 65, yPos, { align: 'left' });
       doc.setTextColor(...primaryText);
-      doc.text(data.customField2, rightColX, yPos, { align: 'right' });
+      doc.text(paymentReference, rightColX, yPos, { align: 'right' });
     }
 
     // ──────────────────────────────────────────
@@ -406,8 +407,9 @@ class PDFService {
         ['Account Type', data.bankingDetails.type],
       ];
       
-      if (data.bankingDetails.reference) {
-        bankInfo.push(['Reference', data.bankingDetails.reference]);
+      const paymentReference = data.customField2 || data.invoiceNumber;
+      if (paymentReference) {
+        bankInfo.push(['Reference', paymentReference]);
       }
 
       bankInfo.forEach(([label, value], index) => {

@@ -221,7 +221,7 @@ const DashboardPage: React.FC = () => {
           const lastLog = getLastFollowUpForInvoice(inv.id);
           events.push({
             type: 'reminder',
-            label: daysBefore === 0 ? 'Due date reminder' : `Reminder (${daysBefore}d before)`,
+            label: daysBefore === 0 ? 'Due date reminder' : `Reminder · ${reminderDate.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}`,
             clientName: inv.client?.name || 'Unknown',
             invoiceNumber: inv.documentNumber,
             amount: inv.amount,

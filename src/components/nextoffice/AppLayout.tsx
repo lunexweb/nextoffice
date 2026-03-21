@@ -99,7 +99,7 @@ const AppLayout: React.FC = () => {
                 <div className="min-w-[32px] h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-serif font-bold text-sm transition-transform duration-200 group-hover:scale-110">T</div>
               )}
             </div>
-            {!collapsed && <span className="font-serif font-bold text-xl whitespace-nowrap text-muted-foreground">Trailbill.com</span>}
+            {!collapsed && <span className="font-sans text-xl whitespace-nowrap text-primary">Trailbill<span className="font-normal text-[0.65em] text-primary/60">.com</span></span>}
           </div>
           
           {/* Right side: Business name only */}

@@ -183,7 +183,7 @@ export const useDashboard = () => {
       if (!user) return;
 
       const channel = supabase
-        .channel('dashboard-invoice-views')
+        .channel('dashboard-realtime')
         .on(
           'postgres_changes',
           {
@@ -198,6 +198,23 @@ export const useDashboard = () => {
                 ? { ...entry, engagement: { viewCount: payload.new.view_count || 0, lastViewedAt: payload.new.last_viewed_at || undefined } }
                 : entry
             ));
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'communication_logs' },
+          () => { load(); }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'commitments' },
+          () => { load(); }
+        )
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'invoices', filter: `user_id=eq.${user.id}` },
+          (payload: any) => {
+            if (['paid', 'overdue'].includes(payload.new.status)) load();
           }
         )
         .subscribe();

@@ -338,6 +338,60 @@ serve(async (req) => {
       console.error('Failed to log communication:', logError);
     }
 
+    // ── Notify owner ──────────────────────────────────────────────────
+    if (invoiceUserId) {
+      try {
+        const { data: ownerProfile } = await serviceClient
+          .from('profiles')
+          .select('email, business_name')
+          .eq('id', invoiceUserId)
+          .single();
+
+        const ownerEmail = ownerProfile?.email;
+        if (ownerEmail && ownerEmail !== recipientEmail) {
+          const dashboardUrl = `${siteUrl}/app/invoices`;
+          const formattedAmt = `R${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+          const ownerSubject = `✅ Project completed email sent to ${recipientName} — ${invoiceNumber}`;
+          const ownerHtml = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${ownerSubject}</title></head>
+<body style="margin:0;padding:0;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;padding:40px 16px;"><tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+      <tr><td style="background-color:#312e81;padding:24px 40px;">
+        <p style="margin:0 0 2px;color:rgba(255,255,255,0.5);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;">Email Sent</p>
+        <h1 style="margin:0;color:#ffffff;font-size:18px;font-weight:700;">✅ Project Completed Notification Sent</h1>
+      </td></tr>
+      <tr><td style="background-color:#6366f1;height:3px;font-size:0;line-height:0;">&nbsp;</td></tr>
+      <tr><td style="padding:28px 40px 20px;">
+        <p style="margin:0 0 16px;color:#475569;font-size:14px;line-height:1.7;">
+          A <strong>project completed</strong> email was sent to <strong style="color:#0f172a;">${recipientName}</strong> for invoice <strong>${invoiceNumber}</strong> (${formattedAmt}). The client has been notified that payment is now due.
+        </p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;"><tr><td align="center">
+          <a href="${dashboardUrl}" style="display:inline-block;background-color:#6366f1;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;padding:14px 40px;border-radius:8px;">View in Dashboard →</a>
+        </td></tr></table>
+        <p style="margin:0;color:#94a3b8;font-size:12px;">This is an automated notification from Trailbill.com.</p>
+      </td></tr>
+      <tr><td style="padding:16px 40px;text-align:center;background-color:#f8fafc;border-top:1px solid #e2e8f0;">
+        <span style="color:#cbd5e1;font-size:12px;font-weight:700;">Trailbill<span style="color:#64748b;font-size:10px;font-weight:400;">.com</span></span>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`;
+
+          await resend.sendEmail({
+            from: `Trailbill.com <${fromEmail}>`,
+            to: ownerEmail,
+            subject: ownerSubject,
+            html: ownerHtml,
+          });
+        }
+      } catch (ownerErr) {
+        console.error('Owner notification failed (non-blocking):', ownerErr);
+      }
+    }
+
     return new Response(
       JSON.stringify({ success: true, emailId: result.id }),
       {

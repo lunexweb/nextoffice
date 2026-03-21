@@ -207,6 +207,18 @@ serve(async (req) => {
               sent_at: new Date().toISOString(),
             });
 
+            // ── Notify owner ──
+            await sendOwnerNotification(resend, fromEmail, businessName, businessEmail, {
+              type: 'reminder',
+              clientName: client.name,
+              invoiceNumber: invoice.number,
+              amount: invoice.amount,
+              dueDate: invoice.due_date,
+              daysUntilDue,
+              daysOverdue: 0,
+              dashboardUrl: `${siteUrl}/app/invoices`,
+            });
+
             remindersSent++;
           } catch (e) {
             errors.push(`Reminder failed for invoice ${invoice.number}: ${e.message}`);
@@ -255,6 +267,20 @@ serve(async (req) => {
               recipient_email: client.email,
               email_id: result.id,
               sent_at: new Date().toISOString(),
+            });
+
+            // ── Notify owner ──
+            await sendOwnerNotification(resend, fromEmail, businessName, businessEmail, {
+              type: 'followup',
+              clientName: client.name,
+              invoiceNumber: invoice.number,
+              amount: invoice.amount,
+              dueDate: invoice.due_date,
+              daysUntilDue: 0,
+              daysOverdue,
+              followUpNumber,
+              scoreDropping,
+              dashboardUrl: `${siteUrl}/app/invoices`,
             });
 
             followUpsSent++;
@@ -471,4 +497,104 @@ function buildFollowUpHtml(p: {
     </div>
   </body>
 </html>`;
+}
+
+// ── Owner notification helper ─────────────────────────────────────────────────
+
+interface OwnerNotifData {
+  type: 'reminder' | 'followup';
+  clientName: string;
+  invoiceNumber: string;
+  amount: number;
+  dueDate: string;
+  daysUntilDue: number;
+  daysOverdue: number;
+  followUpNumber?: number;
+  scoreDropping?: boolean;
+  dashboardUrl: string;
+}
+
+async function sendOwnerNotification(
+  resend: any,
+  fromEmail: string,
+  businessName: string,
+  ownerEmail: string,
+  data: OwnerNotifData,
+): Promise<void> {
+  try {
+    const formattedAmount = `R${data.amount.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const formattedDue = new Date(data.dueDate + (data.dueDate.includes('T') ? '' : 'T00:00:00')).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    const isFollowUp = data.type === 'followup';
+    const headerBg = isFollowUp ? '#7f1d1d' : '#0f172a';
+    const accentColor = isFollowUp ? '#ef4444' : '#3b82f6';
+    const statusIcon = isFollowUp ? '🚨' : '📧';
+
+    const typeLabel = isFollowUp
+      ? `Follow-up #${data.followUpNumber || 1}`
+      : data.daysUntilDue === 0 ? 'Due Date Reminder' : 'Payment Reminder';
+
+    const statusLine = isFollowUp
+      ? `Invoice is <strong style="color:#ef4444;">${data.daysOverdue} day${data.daysOverdue !== 1 ? 's' : ''} overdue</strong>. ${data.scoreDropping ? 'Client score is now dropping.' : 'Score not yet affected.'}`
+      : data.daysUntilDue === 0
+        ? 'Invoice is <strong>due today</strong>.'
+        : 'Invoice is due <strong>tomorrow</strong>.';
+
+    const ownerSubject = isFollowUp
+      ? `${statusIcon} Follow-up #${data.followUpNumber} sent to ${data.clientName} — ${data.invoiceNumber}`
+      : `${statusIcon} Reminder sent to ${data.clientName} — ${data.invoiceNumber}`;
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${ownerSubject}</title></head>
+<body style="margin:0;padding:0;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;padding:40px 16px;"><tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+
+      <tr><td style="background-color:${headerBg};padding:24px 40px;">
+        <p style="margin:0 0 2px;color:rgba(255,255,255,0.5);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;">Automated Action</p>
+        <h1 style="margin:0;color:#ffffff;font-size:18px;font-weight:700;">${statusIcon} ${typeLabel} Sent</h1>
+      </td></tr>
+      <tr><td style="background-color:${accentColor};height:3px;font-size:0;line-height:0;">&nbsp;</td></tr>
+
+      <tr><td style="padding:28px 40px 20px;">
+        <p style="margin:0 0 16px;color:#475569;font-size:14px;line-height:1.7;">
+          Trailbill.com automatically sent a <strong>${typeLabel.toLowerCase()}</strong> to <strong style="color:#0f172a;">${data.clientName}</strong> on your behalf. ${statusLine}
+        </p>
+
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;border-radius:10px;overflow:hidden;margin-bottom:24px;border:1px solid #e2e8f0;">
+          <tr><td colspan="2" style="background-color:${accentColor}14;padding:12px 16px;border-bottom:1px solid #e2e8f0;">
+            <p style="margin:0;color:${accentColor};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;">Invoice Summary</p>
+          </td></tr>
+          <tr><td style="padding:10px 16px;color:#64748b;font-size:13px;border-bottom:1px solid #f1f5f9;">Client</td><td style="padding:10px 16px;text-align:right;font-size:13px;font-weight:600;color:#1e293b;border-bottom:1px solid #f1f5f9;">${data.clientName}</td></tr>
+          <tr><td style="padding:10px 16px;color:#64748b;font-size:13px;border-bottom:1px solid #f1f5f9;">Invoice</td><td style="padding:10px 16px;text-align:right;font-size:13px;font-weight:600;color:#1e293b;border-bottom:1px solid #f1f5f9;">${data.invoiceNumber}</td></tr>
+          <tr><td style="padding:10px 16px;color:#64748b;font-size:13px;border-bottom:1px solid #f1f5f9;">Amount</td><td style="padding:10px 16px;text-align:right;font-size:15px;font-weight:700;color:${accentColor};border-bottom:1px solid #f1f5f9;">${formattedAmount}</td></tr>
+          <tr><td style="padding:10px 16px;color:#64748b;font-size:13px;">Due Date</td><td style="padding:10px 16px;text-align:right;font-size:13px;font-weight:600;color:#1e293b;">${formattedDue}</td></tr>
+        </table>
+
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;"><tr><td align="center">
+          <a href="${data.dashboardUrl}" style="display:inline-block;background-color:${accentColor};color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;padding:14px 40px;border-radius:8px;">View in Dashboard →</a>
+        </td></tr></table>
+
+        <p style="margin:0;color:#94a3b8;font-size:12px;line-height:1.6;">This is an automated notification. No action required — Trailbill.com is handling your payment follow-ups.</p>
+      </td></tr>
+
+      <tr><td style="padding:16px 40px;text-align:center;background-color:#f8fafc;border-top:1px solid #e2e8f0;">
+        <span style="color:#cbd5e1;font-size:12px;font-weight:700;">Trailbill<span style="color:#64748b;font-size:10px;font-weight:400;">.com</span></span>
+        <p style="margin:4px 0 0;color:#cbd5e1;font-size:11px;">Automated invoicing &amp; payment follow-ups</p>
+      </td></tr>
+
+    </table>
+  </td></tr></table>
+</body></html>`;
+
+    await resend.sendEmail({
+      from: `Trailbill.com <${fromEmail}>`,
+      to: ownerEmail,
+      subject: ownerSubject,
+      html,
+    });
+  } catch (err) {
+    console.error('Owner notification failed (non-blocking):', err);
+  }
 }

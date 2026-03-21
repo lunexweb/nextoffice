@@ -110,13 +110,24 @@ class PDFService {
     if (data.businessEmail)   bizParts.push(data.businessEmail);
     if (data.vatNumber)       bizParts.push(`VAT: ${data.vatNumber}`);
     if (bizParts.length) {
-      const bizLine = bizParts.join('  ·  ');
+      // Modern address layout with proper wrapping
       const maxBizW = W - margin * 2 - 60;
-      const truncated = doc.splitTextToSize(bizLine, maxBizW);
-      doc.text(truncated[0], margin + logoOffset, 25);
-      if (truncated.length > 1) {
-        doc.text(truncated[1], margin + logoOffset, 31);
-      }
+      let yPos = 25;
+      
+      bizParts.forEach((part, index) => {
+        const partText = index === 0 ? part : `·  ${part}`;
+        const wrapped = doc.splitTextToSize(partText, maxBizW);
+        
+        wrapped.forEach((line, lineIndex) => {
+          doc.text(line, margin + logoOffset, yPos);
+          yPos += 6; // Line spacing for modern look
+        });
+        
+        // Add extra spacing between address components
+        if (index < bizParts.length - 1) {
+          yPos += 2;
+        }
+      });
     }
 
     // "INVOICE" label right-side

@@ -85,19 +85,27 @@ const AppLayout: React.FC = () => {
         className="h-screen fixed left-0 top-0 z-50 border-r border-border bg-card hidden md:flex flex-col transition-colors duration-200"
       >
         <div className="p-4 flex items-center justify-between overflow-hidden h-16 border-b border-border">
-          {/* Left side: Always Trailbill.com branding */}
+          {/* Left side: User logo in circle + Trailbill.com minimal */}
           <div className="flex items-center gap-3">
-            <div className="min-w-[32px] h-8 w-8 rounded bg-primary flex items-center justify-center text-primary-foreground font-serif font-bold text-sm">T</div>
-            {!collapsed && <span className="font-serif font-bold text-xl whitespace-nowrap">Trailbill<span className="font-sans font-medium text-xs text-primary/70 ml-[1px]">.com</span></span>}
+            {/* User logo circle with hover effect */}
+            <div className="relative group">
+              {businessProfile?.logoUrl ? (
+                <img 
+                  src={businessProfile.logoUrl} 
+                  alt="Business Logo" 
+                  className="min-w-[32px] h-8 w-8 rounded-full object-cover transition-transform duration-200 group-hover:scale-110" 
+                />
+              ) : (
+                <div className="min-w-[32px] h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-serif font-bold text-sm transition-transform duration-200 group-hover:scale-110">T</div>
+              )}
+            </div>
+            {!collapsed && <span className="font-serif font-bold text-xl whitespace-nowrap text-muted-foreground">Trailbill.com</span>}
           </div>
           
-          {/* Right side: User's logo and business name */}
+          {/* Right side: Business name only */}
           {!collapsed && (
-            <div className="flex items-center gap-3">
-              {businessProfile?.logoUrl && (
-                <img src={businessProfile.logoUrl} alt="Business Logo" className="h-8 max-w-[120px] object-contain" />
-              )}
-              <span className="font-serif font-bold text-xl whitespace-nowrap text-muted-foreground">{businessProfile?.businessName}</span>
+            <div className="flex items-center">
+              <span className="font-serif font-bold text-xl whitespace-nowrap">{businessProfile?.businessName}</span>
             </div>
           )}
         </div>
